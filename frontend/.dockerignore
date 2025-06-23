@@ -1,0 +1,8 @@
+node_modules
+.npm
+build
+.git
+*.log
+.dockerignore
+Dockerfile
+README.md 
