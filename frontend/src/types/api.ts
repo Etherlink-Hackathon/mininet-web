@@ -29,6 +29,11 @@ export interface AuthorityInfo {
   committee_members: string[];
   last_heartbeat: string; // ISO date string
   performance_metrics: Record<string, number>;
+  stake: number;
+  network_info: {
+    host: string;
+    port: number;
+  };
 }
 
 export interface NetworkMetrics {

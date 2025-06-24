@@ -64,7 +64,17 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
   };
 
   const handleChange = (field: keyof PaymentFormData) => (
-    event: React.ChangeEvent<HTMLInputElement | { value: unknown }>
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: event.target.value,
+    }));
+    setError(''); // Clear error when user types
+  };
+
+  const handleSelectChange = (field: keyof PaymentFormData) => (
+    event: any
   ) => {
     setFormData(prev => ({
       ...prev,
@@ -129,7 +139,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
         <Select
           value={formData.token}
           label="Token"
-          onChange={handleChange('token')}
+          onChange={handleSelectChange('token')}
         >
           <MenuItem value="USDT">USDT</MenuItem>
           <MenuItem value="USDC">USDC</MenuItem>

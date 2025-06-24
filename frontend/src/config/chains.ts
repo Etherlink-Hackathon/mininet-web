@@ -1,7 +1,7 @@
-import { defineChain } from 'viem';
+import { type Chain } from 'viem';
 
 // Etherlink Mainnet configuration
-export const etherlink = defineChain({
+export const etherlink: Chain = {
   id: 42793,
   name: 'Etherlink',
   nativeCurrency: {
@@ -27,10 +27,10 @@ export const etherlink = defineChain({
       blockCreated: 1,
     },
   },
-});
+} as const;
 
 // Etherlink Testnet configuration (for development)
-export const etherlinkTestnet = defineChain({
+export const etherlinkTestnet: Chain = {
   id: 128123,
   name: 'Etherlink Testnet',
   nativeCurrency: {
@@ -57,6 +57,6 @@ export const etherlinkTestnet = defineChain({
     },
   },
   testnet: true,
-});
+} as const;
 
-export const supportedChains = [etherlink, etherlinkTestnet]; 
+export const supportedChains = [etherlink, etherlinkTestnet] as const; 

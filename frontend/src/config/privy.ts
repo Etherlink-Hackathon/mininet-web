@@ -23,8 +23,8 @@ export const privyConfig: PrivyClientConfig = {
   // },
 };
 
-// Environment variables for configuration
-export const PRIVY_APP_ID = process.env.REACT_APP_PRIVY_APP_ID || 'your-privy-app-id-here';
+// Environment variables for configuration - Updated for Vite
+export const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID || 'your-privy-app-id-here';
 
 // You can set this in your .env file:
-// REACT_APP_PRIVY_APP_ID=your-actual-app-id 
+// VITE_PRIVY_APP_ID=your-actual-app-id 

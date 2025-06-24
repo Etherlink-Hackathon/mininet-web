@@ -1,17 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Box, Typography, Chip, Card, CardContent } from '@mui/material';
 import { Circle, NetworkCheck, Error, Sync } from '@mui/icons-material';
-
-interface AuthorityInfo {
-  name: string;
-  address: string;
-  status: 'online' | 'offline' | 'syncing';
-  stake: number;
-  network_info: {
-    host: string;
-    port: number;
-  };
-}
+import { AuthorityInfo } from '../types/api';
 
 interface AuthorityStatusMapProps {
   authorities: AuthorityInfo[];

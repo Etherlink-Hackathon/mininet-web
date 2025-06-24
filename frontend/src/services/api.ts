@@ -12,7 +12,7 @@ import {
 } from '../types/api';
 
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 class ApiService {
   private client: AxiosInstance;
@@ -126,7 +126,7 @@ class ApiService {
 
   // WebSocket connection helper
   createWebSocketConnection(): WebSocket {
-    const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:8000/api/v1/ws/updates';
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/api/v1/ws/updates';
     return new WebSocket(wsUrl);
   }
 

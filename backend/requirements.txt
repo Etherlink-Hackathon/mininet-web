@@ -15,7 +15,7 @@ aiohttp==3.9.1
 sqlalchemy==2.0.23
 alembic==1.13.1
 redis==5.0.1
-asyncpg==0.29.0
+psycopg[binary]==3.1.19
 
 # Security and authentication
 python-jose[cryptography]==3.3.0
@@ -45,9 +45,9 @@ click==8.1.7
 jinja2==3.1.2
 
 # Network and protocol libraries
-scapy==2.5.0
-netifaces==0.11.0
+# scapy==2.5.0
+# netifaces==0.11.0
 
 # Math and cryptography
-cryptography==41.0.8
+cryptography>=41.0.0
 ecdsa==0.18.0 
