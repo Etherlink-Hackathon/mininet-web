@@ -2,6 +2,11 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
+import { PrivyProvider } from '@privy-io/react-auth';
+import { WagmiProvider } from '@privy-io/wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http } from 'viem';
+import { createConfig } from 'wagmi';
 
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
@@ -9,6 +14,8 @@ import NetworkMap from './pages/NetworkMap';
 import Wallet from './pages/Wallet';
 import Transactions from './pages/Transactions';
 import { WebSocketProvider } from './context/WebSocketContext';
+import { PRIVY_APP_ID, privyConfig } from './config/privy';
+import { etherlink, etherlinkTestnet } from './config/chains';
 
 // Etherlink-inspired theme
 const theme = createTheme({
@@ -83,29 +90,50 @@ const theme = createTheme({
   },
 });
 
+// Create Wagmi config
+const wagmiConfig = createConfig({
+  chains: [etherlink, etherlinkTestnet],
+  transports: {
+    [etherlink.id]: http(),
+    [etherlinkTestnet.id]: http(),
+  },
+});
+
+// Create Query Client for React Query
+const queryClient = new QueryClient();
+
 function App(): JSX.Element {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <WebSocketProvider>
-        <Router>
-          <Box sx={{ 
-            minHeight: '100vh',
-            background: 'linear-gradient(180deg, #0F1419 0%, #1A1F2E 100%)',
-          }}>
-            <Navbar />
-            <Box component="main" sx={{ pt: 8 }}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/map" element={<NetworkMap />} />
-                <Route path="/wallet" element={<Wallet />} />
-                <Route path="/transactions" element={<Transactions />} />
-              </Routes>
-            </Box>
-          </Box>
-        </Router>
-      </WebSocketProvider>
-    </ThemeProvider>
+    <PrivyProvider
+      appId={PRIVY_APP_ID}
+      config={privyConfig}
+    >
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={wagmiConfig}>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <WebSocketProvider>
+              <Router>
+                <Box sx={{ 
+                  minHeight: '100vh',
+                  background: 'linear-gradient(180deg, #0F1419 0%, #1A1F2E 100%)',
+                }}>
+                  <Navbar />
+                  <Box component="main" sx={{ pt: 8 }}>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/map" element={<NetworkMap />} />
+                      <Route path="/wallet" element={<Wallet />} />
+                      <Route path="/transactions" element={<Transactions />} />
+                    </Routes>
+                  </Box>
+                </Box>
+              </Router>
+            </WebSocketProvider>
+          </ThemeProvider>
+        </WagmiProvider>
+      </QueryClientProvider>
+    </PrivyProvider>
   );
 }
 

@@ -8,6 +8,7 @@ import {
   Receipt as TransactionsIcon,
   NetworkCheck
 } from '@mui/icons-material';
+import WalletConnect from './WalletConnect';
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -79,31 +80,9 @@ const Navbar: React.FC = () => {
           ))}
         </Box>
 
-        {/* Status Indicator */}
-        <Box 
-          ml={2} 
-          display="flex" 
-          alignItems="center" 
-          gap={1}
-          px={2}
-          py={0.5}
-          borderRadius={1}
-          bgcolor="rgba(0, 184, 148, 0.1)"
-          border="1px solid rgba(0, 184, 148, 0.3)"
-        >
-          <Box
-            width={8}
-            height={8}
-            borderRadius="50%"
-            bgcolor="#00B894"
-            sx={{
-              boxShadow: '0 0 8px rgba(0, 184, 148, 0.6)',
-              animation: 'pulse 2s infinite',
-            }}
-          />
-          <Typography variant="caption" color="#00B894" fontWeight={500}>
-            Online
-          </Typography>
+        {/* Wallet Connect */}
+        <Box ml={2}>
+          <WalletConnect />
         </Box>
       </Toolbar>
     </AppBar>
