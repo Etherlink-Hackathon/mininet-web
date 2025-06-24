@@ -1,12 +1,4 @@
 frontend/node_modules
 frontend/package-lock.json
-frontend/package.json
-frontend/tsconfig.json
-frontend/tsconfig.app.json
-frontend/tsconfig.spec.json
 backend/node_modules
 backend/package-lock.json
-backend/package.json
-backend/tsconfig.json
-backend/tsconfig.app.json
-backend/tsconfig.spec.json
