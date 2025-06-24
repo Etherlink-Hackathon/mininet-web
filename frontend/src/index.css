@@ -1,0 +1,147 @@
+/* Global styles for Etherlink Offline Payment App */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(180deg, #0F1419 0%, #1A1F2E 100%);
+  min-height: 100vh;
+  color: #ffffff;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #33DAFF 0%, #A29BFE 100%);
+}
+
+/* Leaflet map overrides */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 12px;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(26, 31, 46, 0.95);
+  color: #ffffff;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 210, 255, 0.3);
+}
+
+.leaflet-popup-tip {
+  background: rgba(26, 31, 46, 0.95);
+}
+
+/* Authority marker styles */
+.authority-marker {
+  border-radius: 50%;
+  border: 3px solid #ffffff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.authority-marker.online {
+  background-color: #00B894;
+}
+
+.authority-marker.offline {
+  background-color: #E84393;
+}
+
+.authority-marker.syncing {
+  background-color: #FDCB6E;
+}
+
+.authority-marker.unknown {
+  background-color: #6B7280;
+}
+
+/* Loading animations */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.pulse-animation {
+  animation: pulse 2s infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 100%;
+}
+
+/* Glass morphism effects */
+.glass-card {
+  background: rgba(26, 31, 46, 0.4);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+/* Status indicators */
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-indicator.online {
+  background-color: #00B894;
+  box-shadow: 0 0 8px rgba(0, 184, 148, 0.6);
+}
+
+.status-indicator.offline {
+  background-color: #E84393;
+  box-shadow: 0 0 8px rgba(232, 67, 147, 0.6);
+}
+
+.status-indicator.syncing {
+  background-color: #FDCB6E;
+  box-shadow: 0 0 8px rgba(253, 203, 110, 0.6);
+  animation: pulse 1.5s infinite;
+}
+
+.status-indicator.unknown {
+  background-color: #6B7280;
+} 
