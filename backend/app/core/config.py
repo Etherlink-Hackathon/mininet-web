@@ -5,7 +5,8 @@ network settings, stablecoin configuration, and application settings.
 """
 
 from typing import Dict, List, Optional, Set
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -98,10 +99,7 @@ class Settings(BaseSettings):
     rate_limit_requests: int = Field(100, description="Rate limit requests per minute")
     rate_limit_window: int = Field(60, description="Rate limit window in seconds")
     
-    class Config:
-        """Pydantic configuration."""
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
 class FastPaySettings:
