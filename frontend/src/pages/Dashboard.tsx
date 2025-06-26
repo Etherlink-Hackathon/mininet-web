@@ -9,7 +9,6 @@ import {
   Chip,
   IconButton,
   Button,
-  Paper,
   LinearProgress,
 } from '@mui/material';
 import {
@@ -25,7 +24,7 @@ import {
 import { AuthorityInfo, NetworkMetrics } from '../types/api';
 import { apiService } from '../services/api';
 import QuickPaymentModal from '../components/QuickPaymentModal';
-import AuthorityStatusMap from '../components/AuthorityStatusMap';
+import NetworkMap from '../components/NetworkMap';
 
 interface DashboardStats {
   totalBalance: number;
@@ -198,50 +197,60 @@ const Dashboard: React.FC = () => {
       {/* Network Map and Quick Actions */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
-          <Card sx={{ height: 500 }}>
-            <CardContent>
-              <Typography variant="h3" gutterBottom>
-                Network Status Map
-              </Typography>
-              <AuthorityStatusMap authorities={authorities} />
+          <Card sx={{ height: 600 }}>
+            <CardContent sx={{ height: '100%', p: '16px !important' }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} px={2}>
+                <Typography variant="h3">
+                  Network Status Map
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Click on a shard to view details
+                </Typography>
+              </Box>
+              <Box sx={{ height: 'calc(100% - 48px)' }}>
+                <NetworkMap 
+                  authorities={authorities} 
+                  height="100%"
+                />
+              </Box>
             </CardContent>
           </Card>
         </Grid>
 
         <Grid item xs={12} md={4}>
           <Grid container spacing={2}>
-            {/* Authority Status */}
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h3" gutterBottom>
-                    Authority Status
-                  </Typography>
-                  <Box display="flex" flexDirection="column" gap={1}>
-                    {authorities.map((authority) => (
-                      <Box
-                        key={authority.name}
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                      >
-                        <Typography variant="body2">
-                          {authority.name}
+            {/* Network Metrics */}
+            {networkMetrics && (
+              <Grid item xs={12}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h3" gutterBottom>
+                      Network Metrics
+                    </Typography>
+                    <Box display="flex" flexDirection="column" gap={1}>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="body2">Total Transactions</Typography>
+                        <Typography variant="body2" fontWeight="bold">
+                          {networkMetrics.total_transactions.toLocaleString()}
                         </Typography>
-                        <Chip
-                          label={authority.status}
-                          color={
-                            authority.status === 'online' ? 'success' :
-                            authority.status === 'syncing' ? 'warning' : 'error'
-                          }
-                          size="small"
-                        />
                       </Box>
-                    ))}
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="body2">Successful</Typography>
+                        <Typography variant="body2" fontWeight="bold" color="success.main">
+                          {networkMetrics.successful_transactions.toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="body2">Avg Confirmation</Typography>
+                        <Typography variant="body2" fontWeight="bold">
+                          {networkMetrics.average_confirmation_time.toFixed(1)}s
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            )}
 
             {/* Quick Actions */}
             <Grid item xs={12}>
@@ -277,39 +286,6 @@ const Dashboard: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-
-            {/* Network Metrics */}
-            {networkMetrics && (
-              <Grid item xs={12}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h3" gutterBottom>
-                      Network Metrics
-                    </Typography>
-                    <Box display="flex" flexDirection="column" gap={1}>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2">Total Transactions</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {networkMetrics.total_transactions.toLocaleString()}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2">Successful</Typography>
-                        <Typography variant="body2" fontWeight="bold" color="success.main">
-                          {networkMetrics.successful_transactions.toLocaleString()}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2">Avg Confirmation</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {networkMetrics.average_confirmation_time.toFixed(1)}s
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            )}
           </Grid>
         </Grid>
       </Grid>
@@ -318,7 +294,7 @@ const Dashboard: React.FC = () => {
       <QuickPaymentModal
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
-        authorities={authorities.filter(a => a.status === 'online')}
+        authorities={authorities}
       />
     </Container>
   );

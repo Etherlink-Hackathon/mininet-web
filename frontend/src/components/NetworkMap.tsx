@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Box, Typography, Paper, Chip, CircularProgress, Tooltip, Card, CardContent, Avatar } from '@mui/material';
+import { Box, Typography, Paper, Chip, CircularProgress, Tooltip, Card, CardContent, Avatar, IconButton } from '@mui/material';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
-import { Icon, divIcon, LatLngBounds } from 'leaflet';
+import { Icon, divIcon, LatLngBounds, LatLng } from 'leaflet';
+import CloseIcon from '@mui/icons-material/Close';
 import { AuthorityInfo } from '../types/api';
 import 'leaflet/dist/leaflet.css';
 
@@ -112,7 +113,8 @@ interface ShardCluster {
 
 // Default fallback location (will be replaced with user's location)
 const DEFAULT_LOCATION: [number, number] = [40.7589, -73.9851]; // Central Park, NYC (fallback)
-const MAP_RADIUS = 100; // 100 meters
+const SHARD_RADIUS = 100; // 100 meters transmission range for each shard
+const SHARD_SPACING = 150; // 150 meters between shard centers to avoid overlap
 
 // Shard colors and names
 const SHARD_COLORS = [
@@ -175,20 +177,21 @@ const createShardIcon = (shard: ShardCluster, isHovered: boolean = false) => {
   });
 };
 
-// Position authorities around their shard center
+// Position authorities around their shard center in a spiral pattern
 const getAuthorityPosition = (shard: ShardCluster, authorityIndex: number): [number, number] => {
   const authCount = shard.authorities.length;
   if (authCount === 1) return shard.center;
   
-  const angle = (authorityIndex * 2 * Math.PI) / authCount;
-  const distance = 0.0003; // About 30 meters from shard center
-  const lat = shard.center[0] + Math.cos(angle) * distance;
-  const lng = shard.center[1] + Math.sin(angle) * distance;
+  // Create a spiral pattern
+  const spiralAngle = (authorityIndex * 2.4); // Golden angle in radians
+  const spiralRadius = (SHARD_RADIUS * 0.8 * (authorityIndex + 1)) / (authCount * 1.5) / 111000; // Convert meters to degrees
+  const lat = shard.center[0] + Math.cos(spiralAngle) * spiralRadius;
+  const lng = shard.center[1] + Math.sin(spiralAngle) * spiralRadius * Math.cos(shard.center[0] * Math.PI / 180);
   
   return [lat, lng];
 };
 
-// Enhanced marker icons with status indicators
+// Create authority marker icon
 const createAuthorityIcon = (status: string, name: string, shardColor: string, isHovered: boolean = false) => {
   const statusColors = {
     online: '#00B894',
@@ -252,9 +255,9 @@ const createAuthorityIcon = (status: string, name: string, shardColor: string, i
       </div>
     `,
     className: `authority-marker marker-${status}`,
-    iconSize: [size + 4, size + 4],
-    iconAnchor: [(size + 4) / 2, (size + 4) / 2],
-    popupAnchor: [0, -(size + 4) / 2],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
   });
 };
 
@@ -270,120 +273,159 @@ const FitToArea: React.FC<{ center: [number, number] }> = ({ center }) => {
   return null;
 };
 
-// Hover tooltip component for shards
 const ShardTooltip: React.FC<{ 
   shard: ShardCluster | null; 
   visible: boolean; 
-  position: { x: number; y: number } 
-}> = ({ shard, visible, position }) => {
+  position: { x: number; y: number };
+  onClose: () => void;
+}> = ({ shard, visible, position, onClose }) => {
   if (!visible || !shard) return null;
 
-  const onlineCount = shard.authorities.filter(auth => auth.status === 'online').length;
-  const offlineCount = shard.authorities.filter(auth => auth.status === 'offline').length;
-  const syncingCount = shard.authorities.filter(auth => auth.status === 'syncing').length;
+  const onlineAuthorities = shard.authorities.filter(a => a.status === 'online');
+  const offlineAuthorities = shard.authorities.filter(a => a.status === 'offline');
+  const syncingAuthorities = shard.authorities.filter(a => a.status === 'syncing');
 
   return (
     <Card
       sx={{
-        position: 'fixed',
-        left: position.x + 15,
-        top: position.y - 10,
+        position: 'absolute',
+        left: position.x,
+        top: position.y,
         zIndex: 1000,
-        minWidth: 300,
-        maxWidth: 350,
-        background: 'rgba(26, 31, 46, 0.98)',
-        backdropFilter: 'blur(25px)',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
-        borderRadius: 3,
-        pointerEvents: 'none',
-        transform: 'translateY(-50%)',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          left: -8,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 0,
-          height: 0,
-          borderTop: '8px solid transparent',
-          borderBottom: '8px solid transparent',
-          borderRight: '8px solid rgba(26, 31, 46, 0.98)',
-        }
+        width: 400,
+        maxHeight: '80vh',
+        overflow: 'auto',
+        backgroundColor: 'rgba(26, 31, 46, 0.95)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: 2,
+        color: 'white',
       }}
     >
-      <CardContent sx={{ p: 2.5 }}>
-        <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-          <Avatar 
-            sx={{ 
-              width: 28, 
-              height: 28, 
-              bgcolor: shard.color,
-              fontSize: '0.875rem',
-              fontWeight: 'bold'
-            }}
-          >
-            {shard.name.charAt(0)}
-          </Avatar>
-          <Typography variant="h6" color="primary" sx={{ fontWeight: 600 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        p: 2,
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        position: 'sticky',
+        top: 0,
+        backgroundColor: 'rgba(26, 31, 46, 0.95)',
+        backdropFilter: 'blur(20px)',
+      }}>
+        <Box>
+          <Typography variant="h6" sx={{ color: shard.color, mb: 0.5 }}>
             {shard.name}
           </Typography>
-        </Box>
-        
-        <Typography variant="body2" color="text.secondary" mb={1} sx={{ opacity: 0.9 }}>
-          <strong>Authorities:</strong> {shard.authorities.length} total
-        </Typography>
-        
-        <Box display="flex" gap={1} mb={1.5} flexWrap="wrap">
-          {onlineCount > 0 && (
-            <Chip 
-              label={`${onlineCount} Online`}
-              size="small"
-              sx={{ bgcolor: '#00B894', color: 'white', fontSize: '0.7rem' }}
-            />
-          )}
-          {syncingCount > 0 && (
-            <Chip 
-              label={`${syncingCount} Syncing`}
-              size="small"
-              sx={{ bgcolor: '#FDCB6E', color: 'white', fontSize: '0.7rem' }}
-            />
-          )}
-          {offlineCount > 0 && (
-            <Chip 
-              label={`${offlineCount} Offline`}
-              size="small"
-              sx={{ bgcolor: '#E84393', color: 'white', fontSize: '0.7rem' }}
-            />
-          )}
-        </Box>
-        
-        <Typography variant="body2" color="text.secondary" mb={0.7} sx={{ opacity: 0.9 }}>
-          <strong>Total Stake:</strong> {shard.totalStake.toLocaleString()} tokens
-        </Typography>
-        
-        <Typography variant="body2" color="text.secondary" mb={0.7} sx={{ opacity: 0.9 }}>
-          <strong>Transactions:</strong> {shard.totalTransactions.toLocaleString()}
-        </Typography>
-        
-        <Typography variant="body2" color="text.secondary" sx={{ opacity: 0.8 }}>
-          <strong>Performance:</strong> {shard.averagePerformance.toFixed(1)}%
-        </Typography>
-
-        <Box mt={1.5}>
-          <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.7 }}>
-            Authority Members:
+          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+            {shard.authorities.length} Total Authorities
           </Typography>
-          {shard.authorities.slice(0, 3).map((auth) => (
-            <Typography key={auth.name} variant="caption" display="block" sx={{ ml: 1, opacity: 0.8 }}>
-              • {auth.name} - {auth.status} ({auth.stake.toLocaleString()} tokens)
-            </Typography>
-          ))}
-          {shard.authorities.length > 3 && (
-            <Typography variant="caption" color="text.secondary" sx={{ ml: 1, opacity: 0.6 }}>
-              ... and {shard.authorities.length - 3} more
-            </Typography>
-          )}
+        </Box>
+        <IconButton size="small" onClick={onClose} sx={{ color: 'white' }}>
+          <CloseIcon />
+        </IconButton>
+      </Box>
+
+      <CardContent sx={{ p: 2 }}>
+        {/* Shard Overview */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1.5, color: shard.color }}>
+            Shard Overview
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Paper sx={{ p: 1.5, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
+              <Typography variant="caption" sx={{ opacity: 0.7 }}>Total Stake</Typography>
+              <Typography variant="h6">{shard.totalStake.toLocaleString()} XTZ</Typography>
+            </Paper>
+            <Paper sx={{ p: 1.5, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
+              <Typography variant="caption" sx={{ opacity: 0.7 }}>Transactions</Typography>
+              <Typography variant="h6">{shard.totalTransactions.toLocaleString()}</Typography>
+            </Paper>
+            <Paper sx={{ p: 1.5, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
+              <Typography variant="caption" sx={{ opacity: 0.7 }}>Performance</Typography>
+              <Typography variant="h6">{(shard.averagePerformance * 100).toFixed(1)}%</Typography>
+            </Paper>
+            <Paper sx={{ p: 1.5, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
+              <Typography variant="caption" sx={{ opacity: 0.7 }}>Range</Typography>
+              <Typography variant="h6">100m</Typography>
+            </Paper>
+          </Box>
+        </Box>
+
+        {/* Authority Status Summary */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1.5, color: shard.color }}>
+            Authority Status
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Chip 
+              label={`${onlineAuthorities.length} Online`}
+              size="small"
+              sx={{ bgcolor: '#00B894', color: 'white' }}
+            />
+            {syncingAuthorities.length > 0 && (
+              <Chip 
+                label={`${syncingAuthorities.length} Syncing`}
+                size="small"
+                sx={{ bgcolor: '#FDCB6E', color: 'white' }}
+              />
+            )}
+            {offlineAuthorities.length > 0 && (
+              <Chip 
+                label={`${offlineAuthorities.length} Offline`}
+                size="small"
+                sx={{ bgcolor: '#E84393', color: 'white' }}
+              />
+            )}
+          </Box>
+        </Box>
+
+        {/* Authority List */}
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 1.5, color: shard.color }}>
+            Authority Details
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {shard.authorities.map((authority) => (
+              <Paper 
+                key={authority.name}
+                sx={{ 
+                  p: 1.5, 
+                  bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                  borderRadius: 1,
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                  <Typography variant="subtitle2">{authority.name}</Typography>
+                  <Chip 
+                    label={authority.status}
+                    size="small"
+                    sx={{ 
+                      bgcolor: authority.status === 'online' ? '#00B894' : 
+                              authority.status === 'syncing' ? '#FDCB6E' : '#E84393',
+                      color: 'white',
+                      fontSize: '0.75rem'
+                    }}
+                  />
+                </Box>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, fontSize: '0.875rem' }}>
+                  <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                    Stake: {authority.stake.toLocaleString()} XTZ
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                    Success Rate: {((authority.performance_metrics?.success_rate || 0) * 100).toFixed(1)}%
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                    Managed Shards: {authority.shards.length}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                    Last Active: {new Date(authority.last_heartbeat).toLocaleString()}
+                  </Typography>
+                </Box>
+              </Paper>
+            ))}
+          </Box>
         </Box>
       </CardContent>
     </Card>
@@ -395,299 +437,270 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
   onAuthorityClick, 
   height = 400 
 }) => {
-  const [loading, setLoading] = useState(true);
-  const [hoveredShard, setHoveredShard] = useState<ShardCluster | null>(null);
-  const [hoveredAuthority, setHoveredAuthority] = useState<AuthorityInfo | null>(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [userLocation, setUserLocation] = useState<[number, number]>(DEFAULT_LOCATION);
-  const mapRef = useRef<L.Map | null>(null);
-
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [selectedShard, setSelectedShard] = useState<ShardCluster | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [hoveredShard, sXTZoveredShard] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const mapRef = useRef<any>(null);
+  const shardClusters = useRef<ShardCluster[]>([]);
 
   useEffect(() => {
     addGlobalStyles();
-    
-    // Get user's location
-    const getLocation = () => {
-      if (!navigator?.geolocation) {
-        setLocationError('Geolocation is not supported by your browser');
-        setLoading(false);
-        return;
-      }
+  }, []);
 
-      setLoading(true);
+  const getLocation = () => {
+    if (!navigator.geolocation) {
+      console.warn('Geolocation is not supported by your browser');
+      setLocationError('Geolocation is not supported by your browser');
+      setUserLocation(DEFAULT_LOCATION);
+      return;
+    }
+
+    const handleSuccess = (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      setUserLocation([latitude, longitude]);
       setLocationError(null);
-
-      const handleSuccess = (position: GeolocationPosition) => {
-        setUserLocation([position.coords.latitude, position.coords.longitude]);
-        setLoading(false);
-      };
-
-      const handleError = (error: GeolocationPositionError) => {
-        let errorMessage = 'Error getting location: ';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage += 'Permission denied. Please enable location access in your browser settings.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage += 'Location information is unavailable.';
-            break;
-          case error.TIMEOUT:
-            errorMessage += 'Location request timed out. Please try again.';
-            break;
-          default:
-            errorMessage += error.message;
-        }
-        console.warn(errorMessage);
-        setLocationError(errorMessage);
-        setLoading(false);
-      };
-
-      try {
-        navigator.geolocation.getCurrentPosition(
-          handleSuccess,
-          handleError,
-          {
-            enableHighAccuracy: false, // Set to false for faster response
-            timeout: 10000, // Increased timeout to 10 seconds
-            maximumAge: 60000 // Allow cached positions up to 1 minute old
-          }
-        );
-      } catch (e) {
-        console.error('Unexpected error getting location:', e);
-        setLocationError('Unexpected error getting location. Using default location.');
-        setLoading(false);
+      if (mapRef.current) {
+        mapRef.current.setView([latitude, longitude], 18);
       }
     };
 
+    const handleError = (error: GeolocationPositionError) => {
+      let errorMessage = 'Error getting location: ';
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage += 'Permission denied. Please enable location access in your browser settings.';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage += 'Location information is unavailable.';
+          break;
+        case error.TIMEOUT:
+          errorMessage += 'Location request timed out. Retrying with lower accuracy...';
+          // Retry with lower accuracy and longer timeout
+          navigator.geolocation.getCurrentPosition(
+            handleSuccess,
+            (retryError) => {
+              console.warn('Retry failed:', retryError.message);
+              setLocationError('Could not get location. Using default location.');
+              setUserLocation(DEFAULT_LOCATION);
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 20000,
+              maximumAge: 60000 // Accept positions up to 1 minute old
+            }
+          );
+          return;
+        default:
+          errorMessage += error.message;
+      }
+      console.warn(errorMessage);
+      setLocationError(errorMessage);
+      
+      // Only set default location if not retrying
+      if (error.code !== error.TIMEOUT) {
+        setUserLocation(DEFAULT_LOCATION);
+      }
+    };
+
+    // First try with high accuracy
+    navigator.geolocation.getCurrentPosition(
+      handleSuccess,
+      handleError,
+      {
+        enableHighAccuracy: true,
+        timeout: 10000, // 10 seconds
+        maximumAge: 30000 // Accept positions up to 30 seconds old
+      }
+    );
+  };
+
+  useEffect(() => {
     getLocation();
   }, []);
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
+  const handleShardClick = (shard: ShardCluster, event: any) => {
+    const map = mapRef.current;
+    if (!map) return;
+    
+    const point = map.latLngToContainerPoint([shard.center[0], shard.center[1]]);
+    setTooltipPosition({ 
+      x: point.x + 30, 
+      y: point.y - 100 
+    });
+    setSelectedShard(shard);
+  };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+  const handleCloseTooltip = () => {
+    setSelectedShard(null);
+  };
 
   // Create 5 shards positioned around the user's location
   const createShardClusters = (authorities: AuthorityInfo[]): ShardCluster[] => {
-    const shards: ShardCluster[] = [];
     const authoritiesPerShard = Math.ceil(authorities.length / 5);
+    const clusters: ShardCluster[] = [];
 
     for (let i = 0; i < 5; i++) {
-      // Position shards in a pentagon around the center
       const angle = (i * 2 * Math.PI) / 5;
-      const distance = 0.0008; // About 80-90 meters from center
-      const lat = userLocation[0] + Math.cos(angle) * distance;
-      const lng = userLocation[1] + Math.sin(angle) * distance;
+      const distance = SHARD_SPACING / 111000; // Convert meters to degrees (approximately)
+      
+      // Handle case when userLocation is null
+      const center: [number, number] = userLocation ? [
+        userLocation[0] + Math.cos(angle) * distance,
+        userLocation[1] + Math.sin(angle) * distance * Math.cos(userLocation[0] * Math.PI / 180)
+      ] : [
+        DEFAULT_LOCATION[0] + Math.cos(angle) * distance,
+        DEFAULT_LOCATION[1] + Math.sin(angle) * distance * Math.cos(DEFAULT_LOCATION[0] * Math.PI / 180)
+      ];
 
       const shardAuthorities = authorities.slice(i * authoritiesPerShard, (i + 1) * authoritiesPerShard);
-      const totalStake = shardAuthorities.reduce((sum, auth) => sum + auth.stake, 0);
-      const totalTransactions = shardAuthorities.reduce((sum, auth) => 
-        sum + auth.shards.reduce((shardSum, shard) => shardSum + shard.transaction_count, 0), 0);
-      const averagePerformance = shardAuthorities.length > 0 
-        ? Object.values(shardAuthorities[0]?.performance_metrics || {}).reduce((a, b) => a + b, 0) / 
-          Object.keys(shardAuthorities[0]?.performance_metrics || {}).length || 0
-        : 0;
-
-      shards.push({
-        id: `shard-${i}`,
+      
+      clusters.push({
+        id: `shard-${i + 1}`,
         name: SHARD_NAMES[i],
-        center: [lat, lng],
+        center,
         color: SHARD_COLORS[i],
         authorities: shardAuthorities,
-        totalStake,
-        totalTransactions,
-        averagePerformance,
+        totalStake: shardAuthorities.reduce((sum, auth) => sum + auth.stake, 0),
+        totalTransactions: shardAuthorities.reduce((sum, auth) => 
+          sum + auth.shards.reduce((s, shard) => s + shard.transaction_count, 0), 0),
+        averagePerformance: shardAuthorities.reduce((sum, auth) => 
+          sum + (auth.performance_metrics?.success_rate || 0), 0) / (shardAuthorities.length || 1)
       });
     }
 
-    return shards;
+    return clusters;
   };
 
-  const shardClusters = createShardClusters(authorities);
+  // Update shardClusters when authorities change
+  useEffect(() => {
+    shardClusters.current = createShardClusters(authorities);
+  }, [authorities]);
 
-  if (loading) {
+  if (userLocation === null) {
     return (
       <Paper 
         sx={{ 
-          height,
-          display: 'flex',
-          alignItems: 'center',
+          height, 
+          display: 'flex', 
+          alignItems: 'center', 
           justifyContent: 'center',
           background: 'rgba(26, 31, 46, 0.4)',
           backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
         }}
       >
-        <Box textAlign="center">
-          <CircularProgress sx={{ color: '#00D2FF', mb: 2 }} />
-          <Typography variant="body2" color="text.secondary">
-            Loading shard network map...
-          </Typography>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
+          <Box display="flex" alignItems="center" gap={2}>
+            <CircularProgress size={24} />
+            <Typography>
+              {locationError ? 'Using default location...' : 'Getting your location...'}
+            </Typography>
+          </Box>
+          {locationError && (
+            <Typography variant="body2" color="error" textAlign="center" sx={{ maxWidth: 400, px: 2 }}>
+              {locationError}
+            </Typography>
+          )}
         </Box>
       </Paper>
     );
   }
 
   return (
-    <Box position="relative">
-      <Paper 
-        sx={{ 
-          height,
-          overflow: 'hidden',
-          background: 'rgba(26, 31, 46, 0.4)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: 2,
-        }}
+    <Box sx={{ height, width: '100%', position: 'relative' }}>
+      <MapContainer
+        center={DEFAULT_LOCATION}
+        zoom={18}
+        style={{ height: '100%', width: '100%' }}
+        ref={mapRef}
       >
-        <MapContainer
-          center={userLocation}
-          zoom={18}
-          style={{ height: '100%', width: '100%' }}
-          ref={mapRef}
-        >
-          {/* High detail satellite tile layer */}
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            maxZoom={20}
-          />
-          
-          {/* 100m radius circle to show the area boundary */}
-          <Circle
-            center={userLocation}
-            radius={MAP_RADIUS}
-            pathOptions={{
-              color: '#00D2FF',
-              weight: 2,
-              opacity: 0.6,
-              fillColor: '#00D2FF',
-              fillOpacity: 0.1,
-            }}
-          />
-          
-          {/* Shard markers */}
-          {shardClusters.map((shard) => (
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        
+        {/* User location marker and range */}
+        {userLocation && (
+          <>
             <Marker
-              key={shard.id}
-              position={shard.center}
-              icon={createShardIcon(shard, hoveredShard?.id === shard.id)}
-              eventHandlers={{
-                mouseover: () => setHoveredShard(shard),
-                mouseout: () => setHoveredShard(null),
-                click: () => {
-                  // Focus on the shard and show popup with details
-                },
-              }}
+              position={userLocation}
+              icon={new Icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                shadowSize: [41, 41],
+              })}
             >
-              <Popup>
-                <Box sx={{ minWidth: 280, p: 1 }}>
-                  <Typography variant="h6" color="primary" gutterBottom>
-                    {shard.name}
-                  </Typography>
-                  
-                  <Typography variant="body2" color="text.secondary" mb={1}>
-                    <strong>Authorities:</strong> {shard.authorities.length}
-                  </Typography>
-
-                  <Typography variant="body2" color="text.secondary" mb={1}>
-                    <strong>Total Stake:</strong> {shard.totalStake.toLocaleString()} tokens
-                  </Typography>
-
-                  <Typography variant="body2" color="text.secondary" mb={1}>
-                    <strong>Total Transactions:</strong> {shard.totalTransactions.toLocaleString()}
-                  </Typography>
-
-                  <Box mt={2}>
-                    <Typography variant="body2" color="text.secondary" mb={1}>
-                      <strong>Member Authorities:</strong>
-                    </Typography>
-                    {shard.authorities.map((auth) => (
-                      <Typography key={auth.name} variant="caption" display="block" sx={{ ml: 1 }}>
-                        • {auth.name} - {auth.status} ({auth.stake.toLocaleString()} tokens)
-                      </Typography>
-                    ))}
-                  </Box>
-                </Box>
-              </Popup>
+              <Popup>Your Location</Popup>
             </Marker>
-          ))}
-          
-          {/* Individual authority markers around their shards */}
-          {shardClusters.map((shard: ShardCluster) => 
-            shard.authorities.map((authority: AuthorityInfo, authorityIndex: number) => {
-              const position = getAuthorityPosition(shard, authorityIndex);
-              return (
-                <Marker
-                  key={`${shard.id}-${authority.name}`}
-                  position={position}
-                  icon={createAuthorityIcon(
-                    authority.status, 
-                    authority.name,
-                    shard.color,
-                    hoveredAuthority?.name === authority.name
-                  )}
-                  eventHandlers={{
-                    click: () => onAuthorityClick?.(authority),
-                    mouseover: () => setHoveredAuthority(authority),
-                    mouseout: () => setHoveredAuthority(null),
-                  }}
-                >
-                  <Popup>
-                    <Box sx={{ minWidth: 260, p: 1 }}>
-                      <Typography variant="h6" color="primary" gutterBottom>
-                        {authority.name}
-                      </Typography>
-                      
-                      <Box display="flex" alignItems="center" gap={1} mb={2}>
-                        <Chip
-                          label={authority.status}
-                          size="small"
-                          sx={{
-                            backgroundColor: shard.color,
-                            color: 'white',
-                            fontWeight: 'bold',
-                          }}
-                        />
-                        <Typography variant="caption" color="text.secondary">
-                          Member of {shard.name}
-                        </Typography>
-                      </Box>
+            <Circle
+              center={userLocation}
+              radius={100}
+              pathOptions={{
+                color: '#4A90E2',
+                fillColor: '#4A90E2',
+                fillOpacity: 0.1,
+                weight: 1,
+              }}
+            />
+          </>
+        )}
 
-                      <Typography variant="body2" color="text.secondary" mb={1}>
-                        <strong>Stake:</strong> {authority.stake.toLocaleString()} tokens
-                      </Typography>
+        {/* Render shard clusters */}
+        {shardClusters.current.map((shard) => (
+          <React.Fragment key={shard.id}>
+            <Circle
+              center={shard.center}
+              radius={SHARD_RADIUS}
+              pathOptions={{
+                color: shard.color,
+                fillColor: shard.color,
+                fillOpacity: 0.1,
+                weight: 1,
+              }}
+              eventHandlers={{
+                click: (e) => handleShardClick(shard, e),
+                mouseover: () => sXTZoveredShard(shard.id),
+                mouseout: () => sXTZoveredShard(null),
+              }}
+            />
+            <Marker
+              position={shard.center}
+              icon={createShardIcon(shard, hoveredShard === shard.id)}
+              eventHandlers={{
+                click: (e) => handleShardClick(shard, e),
+                mouseover: () => sXTZoveredShard(shard.id),
+                mouseout: () => sXTZoveredShard(null),
+              }}
+            />
+            
+            {/* Render authority markers (now without click events) */}
+            {shard.authorities.map((authority, idx) => (
+              <Marker
+                key={`${shard.id}-${authority.name}`}
+                position={getAuthorityPosition(shard, idx)}
+                icon={createAuthorityIcon(
+                  authority.status,
+                  authority.name,
+                  shard.color,
+                  false
+                )}
+              />
+            ))}
+          </React.Fragment>
+        ))}
 
-                      <Typography variant="body2" color="text.secondary" mb={1}>
-                        <strong>Managed Shards:</strong> {authority.shards.length}
-                      </Typography>
+        <FitToArea center={userLocation || DEFAULT_LOCATION} />
+      </MapContainer>
 
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Last Heartbeat:</strong><br />
-                        {new Date(authority.last_heartbeat).toLocaleString()}
-                      </Typography>
-                    </Box>
-                  </Popup>
-                </Marker>
-              );
-            })
-          )}
-          
-          {/* Fit view to the defined area */}
-          <FitToArea center={userLocation} />
-        </MapContainer>
-      </Paper>
-
-      {/* Shard hover tooltip */}
       <ShardTooltip
-        shard={hoveredShard}
-        visible={!!hoveredShard}
-        position={mousePosition}
+        shard={selectedShard}
+        visible={!!selectedShard}
+        position={tooltipPosition}
+        onClose={handleCloseTooltip}
       />
     </Box>
   );
