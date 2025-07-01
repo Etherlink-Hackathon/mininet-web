@@ -8,6 +8,16 @@ backend/node_modules
 backend/package-lock.json
 backend/.env
 
+smart-contract/node_modules
+smart-contract/package-lock.json
+smart-contract/.env
+smart-contract/out
+smart-contract/cache
+smart-contract/cache-test
+smart-contract/cache-test-2
+smart-contract/cache-test-3
+smart-contract/cache-test-4
+smart-contract/cache-test-5
 # Python cache files (globally exclude all __pycache__ directories)
 __pycache__/
 *.py[cod]

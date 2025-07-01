@@ -1,0 +1,51 @@
+{
+  "name": "fastpay-smart-contracts",
+  "version": "1.0.0",
+  "description": "FastPay smart contracts for offline payment processing on Etherlink",
+  "main": "index.js",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "test:coverage": "forge coverage",
+    "test:gas": "forge test --gas-report",
+    "lint": "solhint 'contracts/**/*.sol'",
+    "format": "forge fmt",
+    "format:check": "forge fmt --check",
+    "deploy:testnet": "forge script script/Deploy.s.sol:Deploy --rpc-url $ETHERLINK_TESTNET_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY --broadcast",
+    "deploy:mainnet": "forge script script/Deploy.s.sol:Deploy --rpc-url $ETHERLINK_MAINNET_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY --broadcast --verify",
+    "verify:testnet": "forge verify-contract --chain-id 128123 --num-of-optimizations 200 --watch",
+    "verify:mainnet": "forge verify-contract --chain-id 42793 --num-of-optimizations 200 --watch",
+    "snapshot": "forge snapshot",
+    "clean": "forge clean",
+    "install": "forge install",
+    "update": "forge update"
+  },
+  "keywords": [
+    "solidity",
+    "smart-contracts",
+    "fastpay",
+    "etherlink",
+    "tezos",
+    "offline-payments",
+    "blockchain",
+    "foundry"
+  ],
+  "author": "FastPay Team",
+  "license": "MIT",
+  "devDependencies": {
+    "solhint": "^4.0.0",
+    "prettier": "^3.0.0",
+    "prettier-plugin-solidity": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/fastpay-smart-contracts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/fastpay-smart-contracts/issues"
+  },
+  "homepage": "https://github.com/your-org/fastpay-smart-contracts#readme"
+} 

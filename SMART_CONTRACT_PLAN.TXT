@@ -205,3 +205,4 @@ interface IOfflinePaymentProcessor {
 - Error handling
 - Security best practices
 - Emergency procedures
+
