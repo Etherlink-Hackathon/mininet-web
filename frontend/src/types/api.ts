@@ -93,6 +93,37 @@ export interface WalletBalance {
   USDC: number;
 }
 
+// Enhanced balance interface for FastPay integration
+export interface EnhancedWalletBalance {
+  USDT: {
+    wallet: number;      // Regular wallet balance
+    fastpay: number;     // FastPay system balance  
+    total: number;       // Combined balance
+  };
+  USDC: {
+    wallet: number;
+    fastpay: number;
+    total: number;
+  };
+}
+
+// FastPay account registration status
+export interface FastPayAccountStatus {
+  registered: boolean;
+  registrationTime?: number;
+  lastRedeemedSequence?: number;
+}
+
+// Deposit transaction data
+export interface DepositTransaction {
+  token: 'USDT' | 'USDC';
+  amount: string;
+  status: 'pending' | 'confirming' | 'completed' | 'failed';
+  transactionHash?: string;
+  timestamp: string;
+  error?: string;
+}
+
 export interface NetworkTopology {
   authorities: AuthorityInfo[];
   clients: any[]; // ClientState interface would go here

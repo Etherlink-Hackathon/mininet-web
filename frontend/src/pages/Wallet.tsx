@@ -17,6 +17,9 @@ import {
   Paper,
   Skeleton,
   Chip,
+  Alert,
+  Divider,
+  Stack,
 } from '@mui/material';
 import { 
   AccountBalanceWallet, 
@@ -25,39 +28,65 @@ import {
   History,
   CheckCircle,
   Error,
-  Pending
+  Pending,
+  Add,
+  Refresh,
+  Wifi,
+  WifiOff,
+  PersonAdd,
 } from '@mui/icons-material';
+import { useAccount, useConnect } from 'wagmi';
+import { useWalletContext } from '../context/WalletContext';
 import { apiService } from '../services/api';
-import { WalletBalance, TransactionRecord } from '../types/api';
+import { TransactionRecord } from '../types/api';
 import QuickPaymentModal from '../components/QuickPaymentModal';
+import DepositModal from '../components/DepositModal';
 
 const Wallet: React.FC = () => {
-  const [balances, setBalances] = useState<WalletBalance | null>(null);
-  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
+  // Web3 connection
+  const { isConnected, address } = useAccount();
+  const { connect, connectors } = useConnect();
+  
+  // FastPay context
+  const {
+    balances,
+    balancesLoading,
+    balancesError,
+    isRegistered,
+    accountInfo,
+    registrationStatus,
+    recentDeposits,
+    registerAccount,
+    refreshBalances,
+    clearErrors,
+  } = useWalletContext();
 
+  // Local state
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+
+  // Fetch offline transaction data from API
   useEffect(() => {
-    const fetchWalletData = async () => {
+    const fetchOfflineTransactions = async () => {
+      if (!isConnected) return;
+      
       try {
-        setLoading(true);
-        const [balanceData, historyData] = await Promise.all([
-          apiService.getWalletBalance(),
-          apiService.getTransactionHistory()
-        ]);
-        setBalances(balanceData);
+        setApiLoading(true);
+        const historyData = await apiService.getTransactionHistory();
         setTransactions(historyData);
-        setError(null);
+        setApiError(null);
       } catch (err) {
-        setError(apiService.handleApiError(err));
+        setApiError(apiService.handleApiError(err));
       } finally {
-        setLoading(false);
+        setApiLoading(false);
       }
     };
 
-    fetchWalletData();
-  }, []);
+    fetchOfflineTransactions();
+  }, [isConnected]);
 
   const formatAmount = (amount: number): string => {
     return new Intl.NumberFormat('en-US', {
@@ -89,34 +118,146 @@ const Wallet: React.FC = () => {
       {/* Header */}
       <Box mb={4}>
         <Typography variant="h3" component="h1" gutterBottom>
-          Wallet
+          FastPay Wallet
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Manage your USDT and USDC balances
+          Manage your on-chain and off-chain USDT/USDC balances for offline payments
         </Typography>
       </Box>
 
-      {error && (
-        <Box mb={4}>
-          <Typography color="error">{error}</Typography>
-        </Box>
+      {/* Connection Alert */}
+      {!isConnected && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          Please connect your wallet to view balances and make deposits to FastPay.
+          <Button 
+            sx={{ ml: 2 }} 
+            size="small" 
+            variant="outlined"
+            onClick={() => connect({ connector: connectors[0] })}
+          >
+            Connect Wallet
+          </Button>
+        </Alert>
+      )}
+
+      {/* Registration Alert */}
+      {isConnected && !isRegistered && (
+        <Alert 
+          severity="info" 
+          sx={{ mb: 3 }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small"
+              onClick={registerAccount}
+              disabled={registrationStatus.isPending || registrationStatus.isConfirming}
+              startIcon={registrationStatus.isPending || registrationStatus.isConfirming ? <Pending /> : <PersonAdd />}
+            >
+              {registrationStatus.isPending || registrationStatus.isConfirming ? 'Registering...' : 'Register'}
+            </Button>
+          }
+        >
+          Register your account with FastPay to enable offline payments and deposits.
+        </Alert>
+      )}
+
+      {/* Errors */}
+      {balancesError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {balancesError}
+        </Alert>
+      )}
+
+      {apiError && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          Offline transactions: {apiError}
+        </Alert>
+      )}
+
+      {/* Account Status */}
+      {isConnected && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6">Account Status</Typography>
+              <Button 
+                startIcon={<Refresh />} 
+                onClick={refreshBalances}
+                disabled={balancesLoading}
+                size="small"
+              >
+                Refresh
+              </Button>
+            </Box>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Box display="flex" alignItems="center" gap={1}>
+                {isConnected ? <Wifi color="success" /> : <WifiOff color="error" />}
+                <Typography variant="body2">
+                  Wallet: {isConnected ? 'Connected' : 'Disconnected'}
+                </Typography>
+              </Box>
+              <Box display="flex" alignItems="center" gap={1}>
+                {isRegistered ? <CheckCircle color="success" /> : <Error color="warning" />}
+                <Typography variant="body2">
+                  FastPay: {isRegistered ? 'Registered' : 'Not Registered'}
+                </Typography>
+              </Box>
+              {address && (
+                <Typography variant="body2" color="text.secondary">
+                  {address.slice(0, 6)}...{address.slice(-4)}
+                </Typography>
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
       )}
 
       {/* Balance Cards */}
       <Grid container spacing={3} mb={4}>
         {/* USDT Balance Card */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} lg={6}>
           <Card>
             <CardContent>
-              <Box display="flex" alignItems="center" mb={2}>
-                <AccountBalanceWallet color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">USDT Balance</Typography>
+              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                <Box display="flex" alignItems="center">
+                  <AccountBalanceWallet color="primary" sx={{ mr: 1 }} />
+                  <Typography variant="h6">USDT Balances</Typography>
+                </Box>
               </Box>
-              {loading ? (
-                <Skeleton variant="text" width="60%" height={60} />
+              
+              {balancesLoading ? (
+                <Box>
+                  <Skeleton variant="text" width="60%" height={40} />
+                  <Skeleton variant="text" width="40%" height={30} />
+                  <Skeleton variant="text" width="40%" height={30} />
+                </Box>
+              ) : balances ? (
+                <Box>
+                  <Typography variant="h4" color="primary" gutterBottom>
+                    ${parseFloat(balances.USDT.total).toFixed(2)}
+                  </Typography>
+                  <Stack spacing={1}>
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="text.secondary">
+                        Wallet Balance:
+                      </Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        ${parseFloat(balances.USDT.wallet).toFixed(6)}
+                      </Typography>
+                    </Box>
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="text.secondary">
+                        FastPay Balance:
+                      </Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        ${parseFloat(balances.USDT.fastpay).toFixed(6)}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Box>
               ) : (
-                <Typography variant="h3" color="primary">
-                  ${formatAmount(balances?.USDT || 0)}
+                <Typography variant="body2" color="text.secondary">
+                  Connect wallet to view balances
                 </Typography>
               )}
             </CardContent>
@@ -124,18 +265,47 @@ const Wallet: React.FC = () => {
         </Grid>
 
         {/* USDC Balance Card */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} lg={6}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
                 <AccountBalanceWallet color="secondary" sx={{ mr: 1 }} />
-                <Typography variant="h6">USDC Balance</Typography>
+                <Typography variant="h6">USDC Balances</Typography>
               </Box>
-              {loading ? (
-                <Skeleton variant="text" width="60%" height={60} />
+              
+              {balancesLoading ? (
+                <Box>
+                  <Skeleton variant="text" width="60%" height={40} />
+                  <Skeleton variant="text" width="40%" height={30} />
+                  <Skeleton variant="text" width="40%" height={30} />
+                </Box>
+              ) : balances ? (
+                <Box>
+                  <Typography variant="h4" color="secondary" gutterBottom>
+                    ${parseFloat(balances.USDC.total).toFixed(2)}
+                  </Typography>
+                  <Stack spacing={1}>
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="text.secondary">
+                        Wallet Balance:
+                      </Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        ${parseFloat(balances.USDC.wallet).toFixed(6)}
+                      </Typography>
+                    </Box>
+                    <Box display="flex" justifyContent="space-between">
+                      <Typography variant="body2" color="text.secondary">
+                        FastPay Balance:
+                      </Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        ${parseFloat(balances.USDC.fastpay).toFixed(6)}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Box>
               ) : (
-                <Typography variant="h3" color="secondary">
-                  ${formatAmount(balances?.USDC || 0)}
+                <Typography variant="body2" color="text.secondary">
+                  Connect wallet to view balances
                 </Typography>
               )}
             </CardContent>
@@ -149,8 +319,19 @@ const Wallet: React.FC = () => {
           <Grid item>
             <Button
               variant="contained"
+              startIcon={<Add />}
+              onClick={() => setDepositModalOpen(true)}
+              disabled={!isConnected || !isRegistered}
+            >
+              Deposit to FastPay
+            </Button>
+          </Grid>
+          <Grid item>
+            <Button
+              variant="outlined"
               startIcon={<SwapHoriz />}
               onClick={() => setQuickPaymentOpen(true)}
+              disabled={!isConnected || !isRegistered}
             >
               Quick Payment
             </Button>
@@ -184,7 +365,7 @@ const Wallet: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading ? (
+              {apiLoading ? (
                 [...Array(3)].map((_, index) => (
                   <TableRow key={index}>
                     <TableCell><Skeleton /></TableCell>
@@ -233,11 +414,16 @@ const Wallet: React.FC = () => {
         </TableContainer>
       </Box>
 
-      {/* Quick Payment Modal */}
+      {/* Modals */}
       <QuickPaymentModal
         open={quickPaymentOpen}
         onClose={() => setQuickPaymentOpen(false)}
         authorities={[]}
+      />
+      
+      <DepositModal
+        open={depositModalOpen}
+        onClose={() => setDepositModalOpen(false)}
       />
     </Container>
   );

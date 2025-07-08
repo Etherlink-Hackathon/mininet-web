@@ -14,6 +14,7 @@ import NetworkMap from './pages/NetworkMap';
 import Wallet from './pages/Wallet';
 import Transactions from './pages/Transactions';
 import { WebSocketProvider } from './context/WebSocketContext';
+import { WalletProvider } from './context/WalletContext';
 import { PRIVY_APP_ID, privyConfig } from './config/privy';
 import { etherlink, etherlinkTestnet } from './config/chains';
 
@@ -110,10 +111,11 @@ function App(): JSX.Element {
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <WebSocketProvider>
-              <Router>
+          <WalletProvider>
+            <ThemeProvider theme={theme}>
+              <CssBaseline />
+              <WebSocketProvider>
+                <Router>
                 <Box sx={{ 
                   minHeight: '100vh',
                   background: 'linear-gradient(180deg, #0F1419 0%, #1A1F2E 100%)',
@@ -128,9 +130,10 @@ function App(): JSX.Element {
                     </Routes>
                   </Box>
                 </Box>
-              </Router>
-            </WebSocketProvider>
-          </ThemeProvider>
+                </Router>
+              </WebSocketProvider>
+            </ThemeProvider>
+          </WalletProvider>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
