@@ -15,6 +15,7 @@ import structlog
 from app.core.config import get_settings
 from app.api.v1.router import api_router
 from app.services.authority_client import authority_client
+from app.services.mesh_authority_client import mesh_authority_client
 
 # Configure structured logging
 structlog.configure(
@@ -49,11 +50,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Yields:
         None during application lifetime
     """
-    logger.info("Starting Etherlink Offline Payment API", version=settings.app_version)
+    logger.info("Starting Etherlink Offline Payment API with Mesh Gateway", version=settings.app_version)
     
     # Start authority client for discovering and communicating with FastPay authorities
     await authority_client.start()
     logger.info("Authority client started")
+    
+    # Start mesh authority client for gateway-based mesh communication
+    await mesh_authority_client.start()
+    logger.info("Mesh authority client started")
     
     yield
     
@@ -61,6 +66,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Shutting down Etherlink Offline Payment API")
     await authority_client.stop()
     logger.info("Authority client stopped")
+    
+    await mesh_authority_client.stop()
+    logger.info("Mesh authority client stopped")
 
 
 # Create FastAPI application
@@ -72,10 +80,12 @@ app = FastAPI(
     This API interfaces with FastPay authorities running on mininet-wifi to provide:
     
     - 🗺️ **Network Discovery**: Discover and monitor nearby payment authorities
+    - 🌐 **Mesh Gateway**: Connect to mesh networks via internet gateway bridge
     - 💰 **Wallet Management**: Check balances and transaction history  
     - 📱 **Offline Payments**: Send USDT/USDC without internet connectivity
     - 🔒 **Transaction Certificates**: Cryptographic proof of payments
     - 📊 **Real-time Updates**: Live network status via WebSocket
+    - 🕸️ **Mesh Integration**: Seamless mesh network communication
     
     Perfect for **Etherlink Summer Camp** participants building offline-first payment solutions!
     """,
@@ -133,12 +143,23 @@ async def health_check():
         Application health status
     """
     authorities = await authority_client.get_authorities()
+    mesh_authorities = await mesh_authority_client.get_authorities()
+    
+    # Check mesh gateway status
+    try:
+        gateway_status = await mesh_authority_client.get_mesh_gateway_status()
+        gateway_healthy = gateway_status.get('status') == 'healthy'
+    except Exception:
+        gateway_healthy = False
     
     return {
         "status": "healthy",
         "timestamp": structlog.processors.TimeStamper()._make_stamper("iso")(),
         "authority_count": len(authorities),
         "online_authorities": len([a for a in authorities if a.status == "online"]),
+        "mesh_authorities_count": len(mesh_authorities),
+        "mesh_online_authorities": len([a for a in mesh_authorities if a.status == "online"]),
+        "mesh_gateway_healthy": gateway_healthy,
         "supported_tokens": settings.supported_tokens,
         "version": settings.app_version
     }
