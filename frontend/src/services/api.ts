@@ -1,17 +1,22 @@
-// API service for communicating with the FastAPI backend
+// Updated API service for the *flat-route* backend (no /api/v1 prefix)
+// Only essential endpoints are wired; unimplemented ones return safe defaults
 
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { 
-  AuthorityInfo, 
-  NetworkMetrics, 
-  TransactionRecord, 
-  WalletBalance, 
+
+// Types used in the UI – keep existing imports working
+import type {
+  AuthorityInfo,
+  NetworkMetrics,
+  TransactionRecord,
+  WalletBalance,
   NetworkTopology,
   Certificate,
-  PaymentFormData
+  PaymentFormData,
 } from '../types/api';
 
-// API Configuration
+// ---------------------------------------------------------------------------
+// Axios client configuration
+// ---------------------------------------------------------------------------
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 class ApiService {
@@ -19,136 +24,117 @@ class ApiService {
 
   constructor() {
     this.client = axios.create({
-      baseURL: `${API_BASE_URL}/api/v1`,
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      baseURL: API_BASE_URL,
+      timeout: 30_000,
+      headers: { 'Content-Type': 'application/json' },
     });
 
-    // Request interceptor
-    this.client.interceptors.request.use(
-      (config) => {
-        // Add auth token if available
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
+    // Attach interceptors (kept from previous version)
+    this.client.interceptors.request.use((cfg) => {
+      const token = localStorage.getItem('auth_token');
+      if (token) cfg.headers.Authorization = `Bearer ${token}`;
+      return cfg;
+    });
 
-    // Response interceptor
     this.client.interceptors.response.use(
-      (response: AxiosResponse) => {
-        return response;
+      (res: AxiosResponse) => res,
+      (err) => {
+        if (err.response?.status === 401) localStorage.removeItem('auth_token');
+        return Promise.reject(err);
       },
-      (error) => {
-        // Handle common errors
-        if (error.response?.status === 401) {
-          // Unauthorized - redirect to login or clear token
-          localStorage.removeItem('auth_token');
-        }
-        return Promise.reject(error);
-      }
     );
   }
 
-  // Authority endpoints
+  // -----------------------------------------------------------------------
+  // ⚡ NEW backend-compatible calls
+  // -----------------------------------------------------------------------
+
   async getAuthorities(): Promise<AuthorityInfo[]> {
-    const response = await this.client.get<AuthorityInfo[]>('/authorities');
-    return response.data;
+    const { data } = await this.client.get<AuthorityInfo[]>('/authorities');
+    return data;
   }
 
-  async getAuthority(authorityName: string): Promise<AuthorityInfo> {
-    const response = await this.client.get<AuthorityInfo>(`/authorities/${authorityName}`);
-    return response.data;
+  async getAuthority(name: string): Promise<AuthorityInfo> {
+    const { data } = await this.client.get<AuthorityInfo>(`/authorities/${name}`);
+    return data;
   }
 
-  async getAuthorityShards(authorityName: string): Promise<any> {
-    const response = await this.client.get(`/authorities/${authorityName}/shards`);
-    return response.data;
+  /**
+   * Send transfer through chosen authority.
+   * Backend signature: POST /transfer?authority=NAME
+   */
+  async createTransfer(authority: string, payload: PaymentFormData): Promise<any> {
+    const { data } = await this.client.post('/transfer', payload, {
+      params: { authority },
+    });
+    return data;
   }
 
-  async pingAuthority(authorityName: string): Promise<any> {
-    const response = await this.client.post(`/authorities/${authorityName}/ping`);
-    return response.data;
+  async pingAuthority(name: string): Promise<any> {
+    const { data } = await this.client.post(`/ping/${name}`);
+    return data;
   }
 
-  // Network endpoints
+  async getHealth(): Promise<any> {
+    const { data } = await this.client.get('/health');
+    return data;
+  }
+
+  // -----------------------------------------------------------------------
+  // 💤 Legacy methods – return placeholders so UI doesn’t crash
+  // -----------------------------------------------------------------------
+
   async getNetworkTopology(): Promise<NetworkTopology> {
-    const response = await this.client.get<NetworkTopology>('/authorities/network/topology');
-    return response.data;
+    return { nodes: [], links: [] } as unknown as NetworkTopology;
   }
 
   async getNetworkMetrics(): Promise<NetworkMetrics> {
-    const response = await this.client.get<NetworkMetrics>('/authorities/network/metrics');
-    return response.data;
-  }
-
-  // Transaction endpoints
-  async createTransfer(paymentData: PaymentFormData): Promise<TransactionRecord> {
-    const response = await this.client.post<TransactionRecord>('/transactions/transfer', paymentData);
-    return response.data;
-  }
-
-  async getTransaction(transactionId: string): Promise<TransactionRecord> {
-    const response = await this.client.get<TransactionRecord>(`/transactions/${transactionId}`);
-    return response.data;
-  }
-
-  async getTransactionCertificate(transactionId: string): Promise<Certificate> {
-    const response = await this.client.get<Certificate>(`/transactions/${transactionId}/certificate`);
-    return response.data;
-  }
-
-  // Wallet endpoints
-  async getWalletBalance(): Promise<WalletBalance> {
-    const response = await this.client.get<WalletBalance>('/wallet/balance');
-    return response.data;
+    // Backend not implemented yet – return safe defaults
+    return {
+      total_transactions: 0,
+      successful_transactions: 0,
+      average_confirmation_time: 0,
+      online_authorities: 0,
+      total_authorities: 0,
+      network_latency: 0,
+    } as NetworkMetrics;
   }
 
   async getTransactionHistory(): Promise<TransactionRecord[]> {
-    const response = await this.client.get<TransactionRecord[]>('/wallet/history');
-    return response.data;
+    return [];
   }
 
-  // Health check
-  async getHealth(): Promise<any> {
-    const response = await this.client.get('/health', {
-      baseURL: API_BASE_URL, // Use base URL without /api/v1
-    });
-    return response.data;
+  async getTransaction(transactionId: string): Promise<TransactionRecord> {
+    throw new Error('getTransaction not implemented in new backend');
   }
 
-  // WebSocket connection helper
-  createWebSocketConnection(): WebSocket {
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/api/v1/ws/updates';
-    return new WebSocket(wsUrl);
+  async getTransactionCertificate(transactionId: string): Promise<Certificate> {
+    throw new Error('getTransactionCertificate not implemented in new backend');
   }
 
-  // Error handling helper
-  handleApiError(error: any): string {
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      const message = error.response.data?.message || error.response.data?.detail || 'An error occurred';
-      return `Error ${error.response.status}: ${message}`;
-    } else if (error.request) {
-      // The request was made but no response was received
-      return 'Network error: Unable to connect to the server';
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      return `Error: ${error.message}`;
+  async getWalletBalance(): Promise<WalletBalance> {
+    return { balance: 0, token: 'USDT' } as unknown as WalletBalance;
+  }
+
+  // -----------------------------------------------------------------------
+  // Shared error helper
+  // -----------------------------------------------------------------------
+
+  handleApiError(err: any): string {
+    if (err.response) {
+      const msg = err.response.data?.message || err.response.data?.detail || 'Error';
+      return `Error ${err.response.status}: ${msg}`;
     }
+    if (err.request) return 'Network error: cannot reach backend';
+    return `Error: ${err.message}`;
+  }
+
+  // WebSocket helper – not available yet; placeholder to avoid breaking imports
+  createWebSocketConnection(): WebSocket {
+    const url = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/updates';
+    return new WebSocket(url);
   }
 }
 
-// Create and export a singleton instance
 export const apiService = new ApiService();
-
-// Export for testing or alternative usage
 export default ApiService; 

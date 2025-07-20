@@ -555,18 +555,21 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
       ];
 
       const shardAuthorities = authorities.slice(i * authoritiesPerShard, (i + 1) * authoritiesPerShard);
-      
+
       clusters.push({
         id: `shard-${i + 1}`,
         name: SHARD_NAMES[i],
         center,
         color: SHARD_COLORS[i],
         authorities: shardAuthorities,
-        totalStake: shardAuthorities.reduce((sum, auth) => sum + auth.stake, 0),
-        totalTransactions: shardAuthorities.reduce((sum, auth) => 
-          sum + auth.shards.reduce((s, shard) => s + shard.transaction_count, 0), 0),
-        averagePerformance: shardAuthorities.reduce((sum, auth) => 
-          sum + (auth.performance_metrics?.success_rate || 0), 0) / (shardAuthorities.length || 1)
+        totalStake: 0,
+        totalTransactions: 0,
+        averagePerformance: 0
+        // totalStake: shardAuthorities.reduce((sum, auth) => sum + auth.stake, 0),
+        // totalTransactions: shardAuthorities.reduce((sum, auth) => 
+        //   sum + auth.shards.reduce((s, shard) => s + shard.transaction_count, 0), 0),
+        // averagePerformance: shardAuthorities.reduce((sum, auth) => 
+        //   sum + (auth.performance_metrics?.success_rate || 0), 0) / (shardAuthorities.length || 1)
       });
     }
 
