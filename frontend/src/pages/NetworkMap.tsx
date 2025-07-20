@@ -17,8 +17,8 @@ const mockAuthorities: AuthorityInfo[] = [
     position: { x: 40.7128, y: -74.0060, z: 0 }, // New York
     status: 'online',
     shards: [
-      { shard_id: 'shard-001', account_count: 1250, transaction_count: 8934, last_sync: '2024-01-15T10:30:00Z' },
-      { shard_id: 'shard-002', account_count: 980, transaction_count: 5672, last_sync: '2024-01-15T10:29:45Z' }
+      { shard_id: 'shard-001', account_count: 1250, total_transactions: 8934, total_stake: 1000000, last_sync: '2024-01-15T10:30:00Z', authorities: [] },
+      { shard_id: 'shard-002', account_count: 980, total_transactions: 5672, total_stake: 1000000, last_sync: '2024-01-15T10:29:45Z', authorities: [] }
     ],
     committee_members: ['member-001', 'member-002', 'member-003'],
     last_heartbeat: '2024-01-15T10:30:15Z',
@@ -37,7 +37,7 @@ const mockAuthorities: AuthorityInfo[] = [
     position: { x: 51.5074, y: -0.1278, z: 0 }, // London
     status: 'online',
     shards: [
-      { shard_id: 'shard-003', account_count: 1100, transaction_count: 7234, last_sync: '2024-01-15T10:29:50Z' }
+      { shard_id: 'shard-003', account_count: 1100, total_transactions: 7234, total_stake: 1000000, last_sync: '2024-01-15T10:29:50Z', authorities: [] }
     ],
     committee_members: ['member-004', 'member-005'],
     last_heartbeat: '2024-01-15T10:30:10Z',
@@ -56,8 +56,8 @@ const mockAuthorities: AuthorityInfo[] = [
     position: { x: 35.6762, y: 139.6503, z: 0 }, // Tokyo
     status: 'syncing',
     shards: [
-      { shard_id: 'shard-004', account_count: 890, transaction_count: 4521, last_sync: '2024-01-15T10:28:30Z' },
-      { shard_id: 'shard-005', account_count: 1340, transaction_count: 9876, last_sync: '2024-01-15T10:28:45Z' }
+      { shard_id: 'shard-004', account_count: 890, total_transactions: 4521, total_stake: 1000000, last_sync: '2024-01-15T10:28:30Z', authorities: [] },
+      { shard_id: 'shard-005', account_count: 1340, total_transactions: 9876, total_stake: 1000000, last_sync: '2024-01-15T10:28:45Z', authorities: [] }
     ],
     committee_members: ['member-006', 'member-007', 'member-008', 'member-009'],
     last_heartbeat: '2024-01-15T10:29:45Z',
@@ -76,7 +76,7 @@ const mockAuthorities: AuthorityInfo[] = [
     position: { x: 37.7749, y: -122.4194, z: 0 }, // San Francisco
     status: 'online',
     shards: [
-      { shard_id: 'shard-006', account_count: 1560, transaction_count: 12340, last_sync: '2024-01-15T10:30:05Z' }
+      { shard_id: 'shard-006', account_count: 1560, total_transactions: 12340, total_stake: 1000000, last_sync: '2024-01-15T10:30:05Z', authorities: [] }
     ],
     committee_members: ['member-010', 'member-011'],
     last_heartbeat: '2024-01-15T10:30:12Z',
@@ -95,7 +95,7 @@ const mockAuthorities: AuthorityInfo[] = [
     position: { x: 52.5200, y: 13.4050, z: 0 }, // Berlin
     status: 'offline',
     shards: [
-      { shard_id: 'shard-007', account_count: 720, transaction_count: 3456, last_sync: '2024-01-15T10:25:20Z' }
+      { shard_id: 'shard-007', account_count: 720, total_transactions: 3456, total_stake: 1000000, last_sync: '2024-01-15T10:25:20Z', authorities: [] }
     ],
     committee_members: ['member-012'],
     last_heartbeat: '2024-01-15T10:25:30Z',
@@ -146,7 +146,7 @@ const NetworkMapPage: React.FC = () => {
       sum + auth.shards.reduce((shardSum, shard) => shardSum + shard.account_count, 0), 0
     );
     const totalTransactions = authorities.reduce((sum, auth) => 
-      sum + auth.shards.reduce((shardSum, shard) => shardSum + shard.transaction_count, 0), 0
+      sum + auth.shards.reduce((shardSum, shard) => shardSum + shard.total_transactions, 0), 0
     );
     const totalStake = authorities.reduce((sum, auth) => sum + auth.stake, 0);
     
@@ -340,7 +340,7 @@ const NetworkMapPage: React.FC = () => {
                         Accounts: {shard.account_count.toLocaleString()}
                       </Typography>
                       <Typography variant="caption" display="block" color="text.secondary">
-                        Transactions: {shard.transaction_count.toLocaleString()}
+                        Transactions: {shard.total_transactions.toLocaleString()}
                       </Typography>
                       <Typography variant="caption" display="block" color="text.secondary">
                         Last Sync: {new Date(shard.last_sync).toLocaleString()}

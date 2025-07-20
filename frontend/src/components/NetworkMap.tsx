@@ -3,20 +3,11 @@ import { Box, Typography, Paper, Chip, CircularProgress, Tooltip, Card, CardCont
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { Icon, divIcon, LatLngBounds, LatLng } from 'leaflet';
 import CloseIcon from '@mui/icons-material/Close';
-import { AuthorityInfo } from '../types/api';
+import { AuthorityInfo, ShardInfo } from '../types/api';
 import 'leaflet/dist/leaflet.css';
+import { DEFAULT_LOCATION, SHARD_RADIUS, SHARD_SPACING, SHARD_COLORS, SHARD_NAMES } from '../config/map';
+import { apiService } from '../services/api';
 
-// Fix Leaflet default markers for Vite
-const defaultIcon = new Icon({
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  tooltipAnchor: [16, -28],
-  shadowSize: [41, 41]
-});
 
 // Add global styles for animations
 const addGlobalStyles = () => {
@@ -100,41 +91,8 @@ interface NetworkMapProps {
   height?: number | string;
 }
 
-interface ShardCluster {
-  id: string;
-  name: string;
-  center: [number, number];
-  color: string;
-  authorities: AuthorityInfo[];
-  totalStake: number;
-  totalTransactions: number;
-  averagePerformance: number;
-}
-
-// Default fallback location (will be replaced with user's location)
-const DEFAULT_LOCATION: [number, number] = [40.7589, -73.9851]; // Central Park, NYC (fallback)
-const SHARD_RADIUS = 100; // 100 meters transmission range for each shard
-const SHARD_SPACING = 150; // 150 meters between shard centers to avoid overlap
-
-// Shard colors and names
-const SHARD_COLORS = [
-  '#00D2FF', // Cyan
-  '#FF6B6B', // Red
-  '#4ECDC4', // Teal
-  '#45B7D1', // Blue
-  '#96CEB4', // Green
-];
-
-const SHARD_NAMES = [
-  'Alpha Shard',
-  'Beta Shard', 
-  'Gamma Shard',
-  'Delta Shard',
-  'Epsilon Shard'
-];
-
 // Create shard marker icon
-const createShardIcon = (shard: ShardCluster, isHovered: boolean = false) => {
+const createShardIcon = (shard: ShardInfo, isHovered: boolean = false) => {
   const size = isHovered ? 60 : 48;
   const shadow = isHovered ? '0 12px 32px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.4)';
   const onlineCount = shard.authorities.filter(auth => auth.status === 'online').length;
@@ -166,7 +124,7 @@ const createShardIcon = (shard: ShardCluster, isHovered: boolean = false) => {
           border-radius: 50%;
           border: 2px solid ${shard.color}66;
         "></div>
-        <div style="font-size: ${size * 0.2}px; line-height: 1;">${shard.name.split(' ')[0]}</div>
+        <div style="font-size: ${size * 0.2}px; line-height: 1;">${shard.shard_id.split(' ')[0]}</div>
         <div style="font-size: ${size * 0.15}px; opacity: 0.9;">${onlineCount}/${totalCount}</div>
       </div>
     `,
@@ -178,15 +136,15 @@ const createShardIcon = (shard: ShardCluster, isHovered: boolean = false) => {
 };
 
 // Position authorities around their shard center in a spiral pattern
-const getAuthorityPosition = (shard: ShardCluster, authorityIndex: number): [number, number] => {
+const getAuthorityPosition = (shard: ShardInfo, authorityIndex: number): [number, number] => {
   const authCount = shard.authorities.length;
-  if (authCount === 1) return shard.center;
+  if (authCount === 1) return shard.center || [0, 0];
   
   // Create a spiral pattern
   const spiralAngle = (authorityIndex * 2.4); // Golden angle in radians
   const spiralRadius = (SHARD_RADIUS * 0.8 * (authorityIndex + 1)) / (authCount * 1.5) / 111000; // Convert meters to degrees
-  const lat = shard.center[0] + Math.cos(spiralAngle) * spiralRadius;
-  const lng = shard.center[1] + Math.sin(spiralAngle) * spiralRadius * Math.cos(shard.center[0] * Math.PI / 180);
+  const lat = shard.center?.[0] || 0 + Math.cos(spiralAngle) * spiralRadius;
+  const lng = shard.center?.[1] || 0 + Math.sin(spiralAngle) * spiralRadius * Math.cos((shard.center?.[0] || 0) * Math.PI / 180);
   
   return [lat, lng];
 };
@@ -274,7 +232,7 @@ const FitToArea: React.FC<{ center: [number, number] }> = ({ center }) => {
 };
 
 const ShardTooltip: React.FC<{ 
-  shard: ShardCluster | null; 
+  shard: ShardInfo | null; 
   visible: boolean; 
   position: { x: number; y: number };
   onClose: () => void;
@@ -315,7 +273,7 @@ const ShardTooltip: React.FC<{
       }}>
         <Box>
           <Typography variant="h6" sx={{ color: shard.color, mb: 0.5 }}>
-            {shard.name}
+            {shard.shard_id}
           </Typography>
           <Typography variant="caption" sx={{ opacity: 0.7 }}>
             {shard.authorities.length} Total Authorities
@@ -335,15 +293,11 @@ const ShardTooltip: React.FC<{
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             <Paper sx={{ p: 1.5, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
               <Typography variant="caption" sx={{ opacity: 0.7 }}>Total Stake</Typography>
-              <Typography variant="h6">{shard.totalStake.toLocaleString()} XTZ</Typography>
+              <Typography variant="h6">{shard.total_stake.toLocaleString()} XTZ</Typography>
             </Paper>
             <Paper sx={{ p: 1.5, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
               <Typography variant="caption" sx={{ opacity: 0.7 }}>Transactions</Typography>
-              <Typography variant="h6">{shard.totalTransactions.toLocaleString()}</Typography>
-            </Paper>
-            <Paper sx={{ p: 1.5, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
-              <Typography variant="caption" sx={{ opacity: 0.7 }}>Performance</Typography>
-              <Typography variant="h6">{(shard.averagePerformance * 100).toFixed(1)}%</Typography>
+              <Typography variant="h6">{shard.total_transactions.toLocaleString()}</Typography>
             </Paper>
             <Paper sx={{ p: 1.5, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: 1 }}>
               <Typography variant="caption" sx={{ opacity: 0.7 }}>Range</Typography>
@@ -411,16 +365,16 @@ const ShardTooltip: React.FC<{
                 </Box>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, fontSize: '0.875rem' }}>
                   <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                    Stake: {authority.stake.toLocaleString()} XTZ
+                    Stake: {authority?.stake?.toLocaleString()} XTZ
                   </Typography>
                   <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                    Success Rate: {((authority.performance_metrics?.success_rate || 0) * 100).toFixed(1)}%
+                    Success Rate: {((authority?.performance_metrics?.success_rate || 0) * 100).toFixed(1)}%
                   </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                  {/* <Typography variant="body2" sx={{ opacity: 0.7 }}>
                     Managed Shards: {authority.shards.length}
-                  </Typography>
+                  </Typography> */}
                   <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                    Last Active: {new Date(authority.last_heartbeat).toLocaleString()}
+                    Last Active: {new Date(authority?.last_heartbeat).toLocaleString()}
                   </Typography>
                 </Box>
               </Paper>
@@ -438,12 +392,12 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
   height = 400 
 }) => {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [selectedShard, setSelectedShard] = useState<ShardCluster | null>(null);
+  const [selectedShard, setSelectedShard] = useState<ShardInfo | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [hoveredShard, sXTZoveredShard] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const mapRef = useRef<any>(null);
-  const shardClusters = useRef<ShardCluster[]>([]);
+  const shardClusters = useRef<ShardInfo[]>([]);
 
   useEffect(() => {
     addGlobalStyles();
@@ -520,11 +474,11 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
     getLocation();
   }, []);
 
-  const handleShardClick = (shard: ShardCluster, event: any) => {
+  const handleShardClick = (shard: ShardInfo, event: any) => {
     const map = mapRef.current;
     if (!map) return;
     
-    const point = map.latLngToContainerPoint([shard.center[0], shard.center[1]]);
+    const point = map.latLngToContainerPoint([shard?.center?.[0], shard?.center?.[1]]);
     setTooltipPosition({ 
       x: point.x + 30, 
       y: point.y - 100 
@@ -536,13 +490,12 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
     setSelectedShard(null);
   };
 
-  // Create 5 shards positioned around the user's location
-  const createShardClusters = (authorities: AuthorityInfo[]): ShardCluster[] => {
-    const authoritiesPerShard = Math.ceil(authorities.length / 5);
-    const clusters: ShardCluster[] = [];
+  // Create 1 shards positioned around the user's location
+  const createShardClusters = async(): Promise<ShardInfo[]> => {
+    const clusters: ShardInfo[] = await apiService.getShards();
 
-    for (let i = 0; i < 5; i++) {
-      const angle = (i * 2 * Math.PI) / 5;
+    for (let i = 0; i < clusters.length; i++) {
+      const angle = (i * 2 * Math.PI) / clusters.length;
       const distance = SHARD_SPACING / 111000; // Convert meters to degrees (approximately)
       
       // Handle case when userLocation is null
@@ -554,23 +507,8 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
         DEFAULT_LOCATION[1] + Math.sin(angle) * distance * Math.cos(DEFAULT_LOCATION[0] * Math.PI / 180)
       ];
 
-      const shardAuthorities = authorities.slice(i * authoritiesPerShard, (i + 1) * authoritiesPerShard);
-
-      clusters.push({
-        id: `shard-${i + 1}`,
-        name: SHARD_NAMES[i],
-        center,
-        color: SHARD_COLORS[i],
-        authorities: shardAuthorities,
-        totalStake: 0,
-        totalTransactions: 0,
-        averagePerformance: 0
-        // totalStake: shardAuthorities.reduce((sum, auth) => sum + auth.stake, 0),
-        // totalTransactions: shardAuthorities.reduce((sum, auth) => 
-        //   sum + auth.shards.reduce((s, shard) => s + shard.transaction_count, 0), 0),
-        // averagePerformance: shardAuthorities.reduce((sum, auth) => 
-        //   sum + (auth.performance_metrics?.success_rate || 0), 0) / (shardAuthorities.length || 1)
-      });
+      clusters[i].center = center;
+      clusters[i].color = SHARD_COLORS[i];
     }
 
     return clusters;
@@ -578,7 +516,11 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
 
   // Update shardClusters when authorities change
   useEffect(() => {
-    shardClusters.current = createShardClusters(authorities);
+    const fetchShards = async () => {
+      const clusters = await createShardClusters();
+      shardClusters.current = clusters;
+    };
+    fetchShards();
   }, [authorities]);
 
   if (userLocation === null) {
@@ -637,7 +579,9 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
                 shadowSize: [41, 41],
               })}
             >
-              <Popup>Your Location</Popup>
+              <Popup>
+                <span style={{ color: '#2563eb', fontWeight: 'bold' }}>Your Location</span>
+              </Popup>
             </Marker>
             <Circle
               center={userLocation}
@@ -654,9 +598,9 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
 
         {/* Render shard clusters */}
         {shardClusters.current.map((shard) => (
-          <React.Fragment key={shard.id}>
+          <React.Fragment key={shard.shard_id}>
             <Circle
-              center={shard.center}
+              center={shard.center || [0, 0]}
               radius={SHARD_RADIUS}
               pathOptions={{
                 color: shard.color,
@@ -666,16 +610,16 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
               }}
               eventHandlers={{
                 click: (e) => handleShardClick(shard, e),
-                mouseover: () => sXTZoveredShard(shard.id),
+                mouseover: () => sXTZoveredShard(shard.shard_id),
                 mouseout: () => sXTZoveredShard(null),
               }}
             />
             <Marker
-              position={shard.center}
-              icon={createShardIcon(shard, hoveredShard === shard.id)}
+              position={shard.center || [0, 0]}
+              icon={createShardIcon(shard, hoveredShard === shard.shard_id)}
               eventHandlers={{
                 click: (e) => handleShardClick(shard, e),
-                mouseover: () => sXTZoveredShard(shard.id),
+                mouseover: () => sXTZoveredShard(shard.shard_id),
                 mouseout: () => sXTZoveredShard(null),
               }}
             />
@@ -683,12 +627,12 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
             {/* Render authority markers (now without click events) */}
             {shard.authorities.map((authority, idx) => (
               <Marker
-                key={`${shard.id}-${authority.name}`}
+                key={`${shard.shard_id}-${authority.name}`}
                 position={getAuthorityPosition(shard, idx)}
                 icon={createAuthorityIcon(
                   authority.status,
                   authority.name,
-                  shard.color,
+                  shard.color || '',
                   false
                 )}
               />

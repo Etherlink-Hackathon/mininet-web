@@ -12,6 +12,7 @@ import type {
   NetworkTopology,
   Certificate,
   PaymentFormData,
+  ShardInfo,
 } from '../types/api';
 
 // ---------------------------------------------------------------------------
@@ -45,9 +46,10 @@ class ApiService {
     );
   }
 
-  // -----------------------------------------------------------------------
-  // ⚡ NEW backend-compatible calls
-  // -----------------------------------------------------------------------
+  async getShards(): Promise<ShardInfo[]> {
+    const { data } = await this.client.get<ShardInfo[]>('/shards');
+    return data;
+  }
 
   async getAuthorities(): Promise<AuthorityInfo[]> {
     const { data } = await this.client.get<AuthorityInfo[]>('/authorities');

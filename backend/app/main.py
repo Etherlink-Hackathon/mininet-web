@@ -56,6 +56,11 @@ async def health() -> Dict[str, Any]:
     }
 
 
+@app.get("/shards")
+async def list_shards(refresh: bool = Query(False)) -> List[Dict[str, Any]]:
+    return await mesh_client.get_shards(force=refresh)
+
+
 @app.get("/authorities")
 async def list_authorities(refresh: bool = Query(False)) -> List[Dict[str, Any]]:
     return await mesh_client.discover(force=refresh)

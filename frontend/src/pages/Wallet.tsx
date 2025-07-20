@@ -418,7 +418,7 @@ const Wallet: React.FC = () => {
       <QuickPaymentModal
         open={quickPaymentOpen}
         onClose={() => setQuickPaymentOpen(false)}
-        authorities={[]}
+        shards={[]}
       />
       
       <DepositModal

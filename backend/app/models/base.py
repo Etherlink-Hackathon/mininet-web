@@ -123,8 +123,10 @@ class ShardInfo(BaseApiModel):
     """Shard information for an authority."""
     shard_id: str = Field(..., description="Shard identifier")
     account_count: int = Field(0, description="Number of accounts in shard")
-    transaction_count: int = Field(0, description="Number of transactions processed")
+    total_transactions: int = Field(0, description="Number of transactions processed")
+    total_stake: int = Field(0, description="Total stake in shard")
     last_sync: datetime = Field(default_factory=datetime.utcnow, description="Last sync timestamp")
+    authorities: List[AuthorityInfo] = Field(default_factory=list, description="Authorities in shard")
 
 
 class AuthorityInfo(BaseApiModel):

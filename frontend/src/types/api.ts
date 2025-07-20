@@ -16,8 +16,12 @@ export interface Address {
 export interface ShardInfo {
   shard_id: string;
   account_count: number;
-  transaction_count: number;
+  total_transactions: number;
+  center?: [number, number];
+  color?: string;
+  total_stake: number;
   last_sync: string; // ISO date string
+  authorities: AuthorityInfo[];
 }
 
 export interface AuthorityInfo {

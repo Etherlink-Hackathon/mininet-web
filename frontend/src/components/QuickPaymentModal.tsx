@@ -16,38 +16,29 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { Send } from '@mui/icons-material';
-
-interface AuthorityInfo {
-  name: string;
-  address: string;
-  status: 'online' | 'offline' | 'syncing';
-  stake: number;
-  network_info: {
-    host: string;
-    port: number;
-  };
-}
+import { ShardInfo } from '../types/api';
 
 interface QuickPaymentModalProps {
   open: boolean;
   onClose: () => void;
-  authorities: AuthorityInfo[];
+  shards: ShardInfo[];
 }
 
 const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   open,
   onClose,
-  authorities,
+  shards,
 }) => {
   const [amount, setAmount] = useState('');
   const [recipient, setRecipient] = useState('');
-  const [selectedAuthority, setSelectedAuthority] = useState('');
+  const [selectedCluster, setSelectedCluster] = useState('');
+  const [token, setToken] = useState<'USDT' | 'USDC'>('USDT');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async () => {
-    if (!amount || !recipient || !selectedAuthority) {
+    if (!amount || !recipient || !selectedCluster) {
       setError('Please fill in all fields');
       return;
     }
@@ -65,7 +56,7 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
         // Reset form
         setAmount('');
         setRecipient('');
-        setSelectedAuthority('');
+        setSelectedCluster('');
       }, 2000);
     } catch (err) {
       setError('Payment failed. Please try again.');
@@ -104,9 +95,31 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
           </Alert>
         )}
 
+        <FormControl fullWidth disabled={loading || success} sx={{ mb: 2, mt: 2 }}>
+            <InputLabel>Token</InputLabel>
+            <Select
+              value={token}
+              label="Token"
+              onChange={(e) => setToken(e.target.value as 'USDT' | 'USDC')}
+            >
+              <MenuItem value="USDT">
+                <Box display="flex" alignItems="center" gap={1}>
+                  <img src="usdt.jpg" alt="USDT" width={20} height={20} />
+                  USDT
+                </Box>
+              </MenuItem>
+              <MenuItem value="USDC">
+                <Box display="flex" alignItems="center" gap={1}>
+                  <img src="usdc.jpg" alt="USDC" width={20} height={20} />
+                  USDC
+                </Box>
+              </MenuItem>
+            </Select>
+          </FormControl>
+
         <Box display="flex" flexDirection="column" gap={3} pt={1}>
           <TextField
-            label="Amount (USDT)"
+            label="Amount"
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -127,21 +140,21 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
           />
           
           <FormControl fullWidth disabled={loading || success}>
-            <InputLabel>Authority</InputLabel>
+            <InputLabel>Cluster</InputLabel>
             <Select
-              value={selectedAuthority}
-              onChange={(e) => setSelectedAuthority(e.target.value)}
-              label="Authority"
+              value={selectedCluster}
+              onChange={(e) => setSelectedCluster(e.target.value)}
+              label="Cluster"
             >
-              {authorities.map((authority) => (
-                <MenuItem key={authority.name} value={authority.name}>
-                  {authority.name} - {authority.status}
+              {shards.map((shard) => (
+                <MenuItem key={shard.shard_id} value={shard.shard_id}>
+                  {shard.shard_id}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-          
-          {authorities.length === 0 && (
+
+          {shards.length === 0 && (
             <Alert severity="warning">
               No online authorities available. Please try again later.
             </Alert>
@@ -156,7 +169,7 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={loading || success || authorities.length === 0}
+          disabled={loading || success || shards.length === 0}
           startIcon={loading ? <CircularProgress size={20} /> : <Send />}
         >
           {loading ? 'Sending...' : success ? 'Sent!' : 'Send Payment'}

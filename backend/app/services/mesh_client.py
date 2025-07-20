@@ -82,6 +82,29 @@ class MeshClient:  # pylint: disable=too-few-public-methods
             raise MeshClientError("MeshClient not started – call start() first")
         return self._http
 
+    # ------------------------------ shards API ----------------------------
+
+    _shards_cache: List[Dict[str, Any]] = []
+
+    async def get_shards(self, *, force: bool = False) -> List[Dict[str, Any]]:
+        """Fetch shard list from gateway `/shards`."""
+        if self._shards_cache and not force:
+            return self._shards_cache
+
+        http = self._require_client()
+        try:
+            resp = await http.get(f"{self.gateway_url}/shards")
+            resp.raise_for_status()
+            data = resp.json()
+            if isinstance(data, dict):
+                self._shards_cache = data.get("shards", [])
+            else:
+                self._shards_cache = []
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("shard_fetch_failed", error=str(exc))
+            self._shards_cache = []
+        return self._shards_cache
+
     # ------------------------------ core API ------------------------------
 
     async def discover(self, *, force: bool = False) -> List[AuthorityInfoDict]:

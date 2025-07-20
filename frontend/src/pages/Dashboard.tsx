@@ -21,7 +21,7 @@ import {
   Receipt,
 } from '@mui/icons-material';
 
-import { AuthorityInfo, NetworkMetrics } from '../types/api';
+import { AuthorityInfo, ShardInfo, NetworkMetrics } from '../types/api';
 import { apiService } from '../services/api';
 import QuickPaymentModal from '../components/QuickPaymentModal';
 import NetworkMap from '../components/NetworkMap';
@@ -44,6 +44,7 @@ const Dashboard: React.FC = () => {
   });
 
   const [authorities, setAuthorities] = useState<AuthorityInfo[]>([]);
+  const [shards, setShards] = useState<ShardInfo[]>([]);
   const [networkMetrics, setNetworkMetrics] = useState<NetworkMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -51,12 +52,14 @@ const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [authoritiesData, metricsData] = await Promise.all([
+      const [shardsData, authoritiesData, metricsData] = await Promise.all([
+        apiService.getShards(),
         apiService.getAuthorities(),
         apiService.getNetworkMetrics(),
       ]);
 
       setAuthorities(authoritiesData);
+      setShards(shardsData);
       setNetworkMetrics(metricsData);
 
       // Update stats
@@ -294,7 +297,7 @@ const Dashboard: React.FC = () => {
       <QuickPaymentModal
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
-        authorities={authorities}
+        shards={shards}
       />
     </Container>
   );
