@@ -273,6 +273,15 @@ contract FastPayMVP is ReentrancyGuard {
     }
 
     /**
+     * @dev Get the last redeemed sequence number for an account
+     * @param account The account address
+     * @return uint256 The last redeemed sequence number
+     */
+    function getLastRedeemedSequence(address account) external view returns (uint256) {
+        return accounts[account].lastRedeemedSequence;
+    }
+
+    /**
      * @dev Check if a certificate has been redeemed
      * @param certificateHash The certificate hash
      * @return bool Whether the certificate has been redeemed
