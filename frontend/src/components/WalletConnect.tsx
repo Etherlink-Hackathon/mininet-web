@@ -88,17 +88,6 @@ const WalletConnect: React.FC = () => {
 
   return (
     <Box display="flex" alignItems="center" gap={1}>
-      {/* Chain indicator */}
-      <Chip
-        label="Etherlink"
-        size="small"
-        sx={{
-          bgcolor: 'rgba(0, 210, 255, 0.1)',
-          color: '#00D2FF',
-          border: '1px solid rgba(0, 210, 255, 0.3)',
-        }}
-      />
-
       {/* Wallet button */}
       <Button
         variant="outlined"

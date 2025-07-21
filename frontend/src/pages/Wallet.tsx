@@ -220,7 +220,7 @@ const Wallet: React.FC = () => {
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
                 <Box display="flex" alignItems="center">
-                  <AccountBalanceWallet color="primary" sx={{ mr: 1 }} />
+                <img src="/usdt.svg" alt="USDT" width={20} height={20} style={{marginRight: '10px'}}/>
                   <Typography variant="h6">USDT Balances</Typography>
                 </Box>
               </Box>
@@ -269,7 +269,7 @@ const Wallet: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" mb={2}>
-                <AccountBalanceWallet color="secondary" sx={{ mr: 1 }} />
+              <img src="/usdc.svg" alt="USDC" width={20} height={20} style={{marginRight: '10px'}}/>
                 <Typography variant="h6">USDC Balances</Typography>
               </Box>
               

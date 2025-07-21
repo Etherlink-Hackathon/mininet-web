@@ -104,13 +104,13 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
             >
               <MenuItem value="USDT">
                 <Box display="flex" alignItems="center" gap={1}>
-                  <img src="usdt.jpg" alt="USDT" width={20} height={20} />
+                  <img src="/usdt.svg" alt="USDT" width={20} height={20} />
                   USDT
                 </Box>
               </MenuItem>
               <MenuItem value="USDC">
                 <Box display="flex" alignItems="center" gap={1}>
-                  <img src="usdc.jpg" alt="USDC" width={20} height={20} />
+                  <img src="/usdc.svg" alt="USDC" width={20} height={20} />
                   USDC
                 </Box>
               </MenuItem>

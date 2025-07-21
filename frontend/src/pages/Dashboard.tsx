@@ -19,11 +19,13 @@ import {
   Refresh,
   Send,
   Receipt,
+  Add,
 } from '@mui/icons-material';
 
 import { AuthorityInfo, ShardInfo, NetworkMetrics } from '../types/api';
 import { apiService } from '../services/api';
 import QuickPaymentModal from '../components/QuickPaymentModal';
+import DepositModal from '../components/DepositModal';
 import NetworkMap from '../components/NetworkMap';
 
 interface DashboardStats {
@@ -48,6 +50,7 @@ const Dashboard: React.FC = () => {
   const [networkMetrics, setNetworkMetrics] = useState<NetworkMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
 
   const loadDashboardData = async () => {
     try {
@@ -104,7 +107,7 @@ const Dashboard: React.FC = () => {
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         }}>
-          Etherlink Offline Payments
+          SmartPay
         </Typography>
         <Box display="flex" gap={2}>
           <IconButton onClick={loadDashboardData} disabled={loading}>
@@ -264,6 +267,20 @@ const Dashboard: React.FC = () => {
                   </Typography>
                   <Box display="flex" flexDirection="column" gap={2}>
                     <Button
+                      variant="contained"
+                      startIcon={<Add />}
+                      onClick={() => setDepositModalOpen(true)}
+                      fullWidth
+                      sx={{ 
+                        background: 'linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #00B8E6 0%, #5B4BD6 100%)',
+                        }
+                      }}
+                    >
+                      Deposit to FastPay
+                    </Button>
+                    <Button
                       variant="outlined"
                       startIcon={<Send />}
                       onClick={() => setPaymentModalOpen(true)}
@@ -298,6 +315,12 @@ const Dashboard: React.FC = () => {
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         shards={shards}
+      />
+
+      {/* Deposit Modal */}
+      <DepositModal
+        open={depositModalOpen}
+        onClose={() => setDepositModalOpen(false)}
       />
     </Container>
   );

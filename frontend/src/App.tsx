@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import NetworkMap from './pages/NetworkMap';
 import Wallet from './pages/Wallet';
 import Transactions from './pages/Transactions';
+import Authority from './pages/Authority';
 import { WebSocketProvider } from './context/WebSocketContext';
 import { WalletProvider } from './context/WalletContext';
 import { PRIVY_APP_ID, privyConfig } from './config/privy';
@@ -127,6 +128,7 @@ function App(): JSX.Element {
                       <Route path="/map" element={<NetworkMap />} />
                       <Route path="/wallet" element={<Wallet />} />
                       <Route path="/transactions" element={<Transactions />} />
+                      <Route path="/authority" element={<Authority />} />
                     </Routes>
                   </Box>
                 </Box>

@@ -175,8 +175,14 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
               onChange={(e) => setToken(e.target.value as 'USDT' | 'USDC')}
               disabled={isTransactionPending}
             >
-              <MenuItem value="USDT">USDT</MenuItem>
-              <MenuItem value="USDC">USDC</MenuItem>
+              <MenuItem value="USDT">
+                <img src="/usdt.svg" alt="USDT" width={20} height={20} style={{marginRight: '10px'}}/>
+                USDT
+              </MenuItem>
+              <MenuItem value="USDC">
+                <img src="/usdc.svg" alt="USDC" width={20} height={20} style={{marginRight: '10px'}}/>
+                USDC
+              </MenuItem>
             </Select>
           </FormControl>
 
