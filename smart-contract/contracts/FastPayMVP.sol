@@ -113,6 +113,41 @@ contract FastPayMVP is ReentrancyGuard {
     }
 
     /**
+     * @dev Check if an account is registered with FastPay
+     * @param account The account address to check
+     * @return bool Whether the account is registered
+     */
+    function isAccountRegistered(address account) external view returns (bool) {
+        return accounts[account].registered;
+    }
+
+    /**
+     * @dev Get account information
+     * @param account The account address
+     * @return registered Whether the account is registered
+     * @return registrationTime When the account was registered
+     * @return lastRedeemedSequence Last redeemed sequence number
+     */
+    function getAccountInfo(address account) 
+        external 
+        view 
+        returns (bool registered, uint256 registrationTime, uint256 lastRedeemedSequence) 
+    {
+        AccountOnchainState storage acc = accounts[account];
+        return (acc.registered, acc.registrationTime, acc.lastRedeemedSequence);
+    }
+
+    /**
+     * @dev Get account balance for a specific token
+     * @param account The account address
+     * @param token The token address
+     * @return balance The account's FastPay balance for the token
+     */
+    function getAccountBalance(address account, address token) external view returns (uint256) {
+        return accounts[account].balances[token];
+    }
+
+    /**
      * @dev Handle funding transaction from Primary to FastPay
      * This represents transferring tokens from Primary blockchain to FastPay system
      * @param token The ERC20 token address
@@ -151,13 +186,12 @@ contract FastPayMVP is ReentrancyGuard {
     }
 
     /**
-     * @dev Create a transfer certificate for off-chain FastPay payment
-     * This represents an intention to transfer funds within FastPay system
-     * @param recipient The payment recipient
-     * @param token The token being transferred
-     * @param amount The payment amount
-     * @param sequenceNumber The sequence number for this transfer
-     * @return certificateHash The generated certificate hash
+     * @dev Create a transfer certificate for off-chain payments
+     * @param recipient The recipient address
+     * @param token The token address
+     * @param amount The transfer amount
+     * @param sequenceNumber The sequence number for replay protection
+     * @return bytes32 The certificate hash
      */
     function createTransferCertificate(
         address recipient,
@@ -170,13 +204,11 @@ contract FastPayMVP is ReentrancyGuard {
         validAddress(recipient)
         validAddress(token)
         validAmount(amount)
-        returns (bytes32 certificateHash) 
+        returns (bytes32)
     {
-        // Check sufficient balance for the transfer
-        if (accounts[msg.sender].balances[token] < amount) {
-            revert InsufficientBalance();
-        }
-
+        // Check sender has sufficient balance
+        if (accounts[msg.sender].balances[token] < amount) revert InsufficientBalance();
+        
         // Create transfer certificate
         TransferCertificate memory cert = TransferCertificate({
             sender: msg.sender,
@@ -186,141 +218,66 @@ contract FastPayMVP is ReentrancyGuard {
             sequenceNumber: sequenceNumber,
             timestamp: block.timestamp
         });
-
-        certificateHash = _hashTransferCertificate(cert);
-
-        emit TransferCertificateCreated(msg.sender, recipient, certificateHash);
+        
+        // Generate certificate hash
+        bytes32 certHash = keccak256(abi.encode(cert));
+        
+        emit TransferCertificateCreated(msg.sender, recipient, certHash);
+        
+        return certHash;
     }
 
     /**
      * @dev Handle redeem transaction from FastPay to Primary
-     * This finalizes a transfer from FastPay system back to Primary blockchain
-     * @param redeemTx The redemption transaction containing transfer certificate
+     * @param redeemTx The redeem transaction data
      */
-    function handleRedeemTransaction(RedeemTransaction calldata redeemTx) external nonReentrant {
+    function handleRedeemTransaction(RedeemTransaction calldata redeemTx) 
+        external 
+        nonReentrant
+    {
         TransferCertificate memory cert = redeemTx.transferCertificate;
-        bytes32 certHash = _hashTransferCertificate(cert);
         
-        // Check if certificate was already redeemed
-        if (processedRedemptions[certHash]) {
-            revert CertificateAlreadyRedeemed();
-        }
-
-        // Validate the transfer certificate
-        if (!_isValidTransferCertificate(cert)) {
-            revert InvalidTransferCertificate();
-        }
-
-        // Check that sequence number is increasing
-        AccountOnchainState storage senderAccount = accounts[cert.sender];
-        if (cert.sequenceNumber <= senderAccount.lastRedeemedSequence) {
+        // Validate sequence number
+        if (cert.sequenceNumber <= accounts[cert.sender].lastRedeemedSequence) {
             revert InvalidSequenceNumber();
         }
-
-        // Check sufficient balance in the system
-        if (totalBalance[cert.token] < cert.amount) {
-            revert InsufficientBalance();
-        }
-
-        // Check sender has sufficient FastPay balance
-        if (senderAccount.balances[cert.token] < cert.amount) {
-            revert InsufficientBalance();
-        }
-
-        // Update sender's FastPay balance
-        senderAccount.balances[cert.token] -= cert.amount;
-        senderAccount.lastRedeemedSequence = cert.sequenceNumber;
         
-        // Update total system balance
+        // Generate certificate hash for verification
+        bytes32 certHash = keccak256(abi.encode(cert));
+        
+        // Check if already processed
+        if (processedRedemptions[certHash]) revert CertificateAlreadyRedeemed();
+        
+        // Mark as processed
+        processedRedemptions[certHash] = true;
+        accounts[cert.sender].lastRedeemedSequence = cert.sequenceNumber;
+        
+        // Update balances
+        accounts[cert.sender].balances[cert.token] -= cert.amount;
         totalBalance[cert.token] -= cert.amount;
         
-        // Transfer tokens from FastPay system to recipient on Primary
-        if (accounts[cert.recipient].registered) {
-            // If recipient has FastPay account, credit their balance
-            accounts[cert.recipient].balances[cert.token] += cert.amount;
-        } else {
-            // If recipient doesn't have FastPay account, transfer directly on Primary
-            IERC20(cert.token).safeTransfer(cert.recipient, cert.amount);
-        }
-
-        // Mark certificate as processed
-        processedRedemptions[certHash] = true;
-
+        // Transfer tokens from FastPay system to recipient
+        IERC20(cert.token).safeTransfer(cert.recipient, cert.amount);
+        
         emit RedemptionCompleted(cert.sender, cert.recipient, cert.token, cert.amount, cert.sequenceNumber);
     }
 
-    /// @dev View functions
-    function getAccountBalance(address account, address token) external view returns (uint256) {
-        return accounts[account].balances[token];
-    }
-
-    function isAccountRegistered(address account) external view returns (bool) {
-        return accounts[account].registered;
-    }
-
-    function getLastRedeemedSequence(address account) external view returns (uint256) {
-        return accounts[account].lastRedeemedSequence;
-    }
-
-    function getAccountInfo(address account) external view returns (
-        bool registered,
-        uint256 registrationTime,
-        uint256 lastRedeemedSequence
-    ) {
-        AccountOnchainState storage accountInfo = accounts[account];
-        return (
-            accountInfo.registered,
-            accountInfo.registrationTime,
-            accountInfo.lastRedeemedSequence
-        );
-    }
-
-    function isCertificateRedeemed(bytes32 certificateHash) external view returns (bool) {
-        return processedRedemptions[certificateHash];
-    }
-
+    /**
+     * @dev Get funding transaction by index
+     * @param index The transaction index
+     * @return FundingTransaction The funding transaction data
+     */
     function getFundingTransaction(uint256 index) external view returns (FundingTransaction memory) {
         require(index < blockchain.length, "Transaction index out of bounds");
         return blockchain[index];
     }
 
-    /// @dev Internal functions
-    function _hashTransferCertificate(TransferCertificate memory cert) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(
-            cert.sender,
-            cert.recipient,
-            cert.token,
-            cert.amount,
-            cert.sequenceNumber,
-            cert.timestamp
-        ));
-    }
-
-    function _isValidTransferCertificate(TransferCertificate memory cert) internal view returns (bool) {
-        // Basic validation
-        if (cert.sender == address(0) || cert.recipient == address(0) || cert.token == address(0)) {
-            return false;
-        }
-        
-        if (cert.amount == 0) {
-            return false;
-        }
-
-        // Check if sender is registered
-        if (!accounts[cert.sender].registered) {
-            return false;
-        }
-
-        // Check sequence number is valid (greater than last redeemed)
-        if (cert.sequenceNumber <= accounts[cert.sender].lastRedeemedSequence) {
-            return false;
-        }
-
-        // Certificate should not be too old (24 hours)
-        if (block.timestamp - cert.timestamp > 24 hours) {
-            return false;
-        }
-
-        return true;
+    /**
+     * @dev Check if a certificate has been redeemed
+     * @param certificateHash The certificate hash
+     * @return bool Whether the certificate has been redeemed
+     */
+    function isCertificateRedeemed(bytes32 certificateHash) external view returns (bool) {
+        return processedRedemptions[certificateHash];
     }
 } 
