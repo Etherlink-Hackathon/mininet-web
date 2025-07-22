@@ -1,55 +1,19 @@
 import { type Address } from 'viem';
-
+import { SmartPayMVP } from '../abis/SmartPayMVP';
+import { SmartPayAuthorities } from '../abis/SmartPayAuthorities';
 // Native token address (used for XTZ)
 export const NATIVE_TOKEN = '0x0000000000000000000000000000000000000000' as Address;
 
 // SmartPay MVP Contract Configuration
 export const SMARTPAY_CONTRACT = {
   address: (import.meta.env.VITE_SMARTPAY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
-  abi: [
-    // Account Management
-    'function registerAccount() external',
-    'function isAccountRegistered(address account) external view returns (bool)',
-    'function getAccountInfo(address account) external view returns (bool registered, uint256 registrationTime, uint256 lastRedeemedSequence)',
-    
-    // Balance Management
-    'function getAccountBalance(address account, address token) external view returns (uint256)',
-    'function totalBalance(address token) external view returns (uint256)',
-    'function totalAccounts() external view returns (uint256)',
-    
-    // Funding Operations
-    'function handleFundingTransaction(address token, uint256 amount) external',
-    'function handleNativeFundingTransaction() external payable',
-    
-    // Transfer Operations
-    'function createTransferCertificate(address recipient, address token, uint256 amount, uint256 sequenceNumber) external returns (bytes32)',
-    'function handleRedeemTransaction((address sender, address recipient, address token, uint256 amount, uint256 sequenceNumber, uint256 timestamp) transferCertificate, bytes signature) external',
-    
-    // Utility Functions
-    'function isNativeToken(address token) external pure returns (bool)',
-    'function getNativeBalance() external view returns (uint256)',
-    'function getLastRedeemedSequence(address account) external view returns (uint256)',
-    'function isCertificateRedeemed(bytes32 certificateHash) external view returns (bool)',
-    
-    // Constants
-    'function NATIVE_TOKEN() external view returns (address)',
-    
-    // Events
-    'event AccountRegistered(address indexed account, uint256 timestamp)',
-    'event FundingCompleted(address indexed sender, address indexed token, uint256 amount, uint256 transactionIndex)',
-    'event TransferCertificateCreated(address indexed sender, address indexed recipient, bytes32 certificateHash)',
-    'event RedemptionCompleted(address indexed sender, address indexed recipient, address indexed token, uint256 amount, uint256 sequenceNumber, uint256 timestamp, bytes signature)',
-  ],
+  abi: SmartPayMVP.abi,
 } as const;
 
 // SmartPay Authority Manager Contract Configuration
 export const FASTPAY_AUTHORITY_CONTRACT = {
   address: (import.meta.env.VITE_SMARTPAY_AUTHORITY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
-  abi: [
-    // Authority management functions would go here
-    'function getAuthorityInfo(address authority) external view returns (string memory name, bool active)',
-    'function isAuthorityActive(address authority) external view returns (bool)',
-  ],
+  abi: SmartPayAuthorities.abi,
 } as const;
 
 // ERC20 Token ABI
