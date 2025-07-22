@@ -1,293 +1,142 @@
 import { type Address } from 'viem';
 
-// FastPay MVP Smart Contract Configuration
+// Native token address (used for XTZ)
+export const NATIVE_TOKEN = '0x0000000000000000000000000000000000000000' as Address;
+
+// SmartPay MVP Contract Configuration
 export const FASTPAY_CONTRACT = {
   address: (import.meta.env.VITE_FASTPAY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
   abi: [
     // Account Management
-    {
-      inputs: [],
-      name: 'registerAccount',
-      outputs: [],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-    {
-      inputs: [{ internalType: 'address', name: 'account', type: 'address' }],
-      name: 'isAccountRegistered',
-      outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [
-        { internalType: 'address', name: 'account', type: 'address' },
-        { internalType: 'address', name: 'token', type: 'address' },
-      ],
-      name: 'getAccountBalance',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [{ internalType: 'address', name: 'account', type: 'address' }],
-      name: 'getAccountInfo',
-      outputs: [
-        { internalType: 'bool', name: 'registered', type: 'bool' },
-        { internalType: 'uint256', name: 'registrationTime', type: 'uint256' },
-        { internalType: 'uint256', name: 'lastRedeemedSequence', type: 'uint256' },
-      ],
-      stateMutability: 'view',
-      type: 'function',
-    },
+    'function registerAccount() external',
+    'function isAccountRegistered(address account) external view returns (bool)',
+    'function getAccountInfo(address account) external view returns (bool registered, uint256 registrationTime, uint256 lastRedeemedSequence)',
+    
+    // Balance Management
+    'function getAccountBalance(address account, address token) external view returns (uint256)',
+    'function totalBalance(address token) external view returns (uint256)',
+    'function totalAccounts() external view returns (uint256)',
+    
     // Funding Operations
-    {
-      inputs: [
-        { internalType: 'address', name: 'token', type: 'address' },
-        { internalType: 'uint256', name: 'amount', type: 'uint256' },
-      ],
-      name: 'handleFundingTransaction',
-      outputs: [],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-    // Transfer Certificates
-    {
-      inputs: [
-        { internalType: 'address', name: 'recipient', type: 'address' },
-        { internalType: 'address', name: 'token', type: 'address' },
-        { internalType: 'uint256', name: 'amount', type: 'uint256' },
-        { internalType: 'uint256', name: 'sequenceNumber', type: 'uint256' },
-      ],
-      name: 'createTransferCertificate',
-      outputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
+    'function handleFundingTransaction(address token, uint256 amount) external',
+    'function handleNativeFundingTransaction() external payable',
+    
+    // Transfer Operations
+    'function createTransferCertificate(address recipient, address token, uint256 amount, uint256 sequenceNumber) external returns (bytes32)',
+    'function handleRedeemTransaction((address sender, address recipient, address token, uint256 amount, uint256 sequenceNumber, uint256 timestamp) transferCertificate, bytes signature) external',
+    
+    // Utility Functions
+    'function isNativeToken(address token) external pure returns (bool)',
+    'function getNativeBalance() external view returns (uint256)',
+    'function getLastRedeemedSequence(address account) external view returns (uint256)',
+    'function isCertificateRedeemed(bytes32 certificateHash) external view returns (bool)',
+    
+    // Constants
+    'function NATIVE_TOKEN() external view returns (address)',
+    
     // Events
-    {
-      anonymous: false,
-      inputs: [
-        { indexed: true, internalType: 'address', name: 'account', type: 'address' },
-        { indexed: false, internalType: 'uint256', name: 'timestamp', type: 'uint256' },
-      ],
-      name: 'AccountRegistered',
-      type: 'event',
-    },
-    {
-      anonymous: false,
-      inputs: [
-        { indexed: true, internalType: 'address', name: 'sender', type: 'address' },
-        { indexed: true, internalType: 'address', name: 'token', type: 'address' },
-        { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
-        { indexed: false, internalType: 'uint256', name: 'transactionIndex', type: 'uint256' },
-      ],
-      name: 'FundingCompleted',
-      type: 'event',
-    },
-  ]
-};
+    'event AccountRegistered(address indexed account, uint256 timestamp)',
+    'event FundingCompleted(address indexed sender, address indexed token, uint256 amount, uint256 transactionIndex)',
+    'event TransferCertificateCreated(address indexed sender, address indexed recipient, bytes32 certificateHash)',
+    'event RedemptionCompleted(address indexed sender, address indexed recipient, address indexed token, uint256 amount, uint256 sequenceNumber, uint256 timestamp, bytes signature)',
+  ],
+} as const;
 
-// FastPay Authority Manager Contract Configuration
+// SmartPay Authority Manager Contract Configuration
 export const FASTPAY_AUTHORITY_CONTRACT = {
   address: (import.meta.env.VITE_FASTPAY_AUTHORITY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
   abi: [
-    // Authority Management
-    {
-      inputs: [
-        { internalType: 'uint256', name: 'lockDuration', type: 'uint256' },
-        { internalType: 'string', name: 'networkInfo', type: 'string' },
-      ],
-      name: 'stakeToBecomaAuthority',
-      outputs: [],
-      stateMutability: 'payable',
-      type: 'function',
-    },
-    {
-      inputs: [],
-      name: 'unstakeAuthority',
-      outputs: [],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-    {
-      inputs: [{ internalType: 'address', name: 'authority', type: 'address' }],
-      name: 'isAuthority',
-      outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [{ internalType: 'address', name: 'authority', type: 'address' }],
-      name: 'getAuthorityInfo',
-      outputs: [
-        {
-          components: [
-            { internalType: 'bool', name: 'isActive', type: 'bool' },
-            { internalType: 'uint256', name: 'stakedAmount', type: 'uint256' },
-            { internalType: 'uint256', name: 'stakingTime', type: 'uint256' },
-            { internalType: 'uint256', name: 'lockDuration', type: 'uint256' },
-            { internalType: 'uint256', name: 'rewardsClaimed', type: 'uint256' },
-            { internalType: 'uint256', name: 'transactionsProcessed', type: 'uint256' },
-            { internalType: 'uint256', name: 'validatorScore', type: 'uint256' },
-            { internalType: 'uint256', name: 'uptime', type: 'uint256' },
-            { internalType: 'string', name: 'networkInfo', type: 'string' },
-            { internalType: 'uint256', name: 'lastRewardClaim', type: 'uint256' },
-            { internalType: 'uint256', name: 'lastActiveTime', type: 'uint256' },
-            { internalType: 'bool', name: 'isSlashed', type: 'bool' },
-          ],
-          internalType: 'struct FastPayAuthorityManager.AuthorityInfo',
-          name: '',
-          type: 'tuple',
-        },
-      ],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [{ internalType: 'address', name: 'authority', type: 'address' }],
-      name: 'getAuthorityMetrics',
-      outputs: [
-        {
-          components: [
-            { internalType: 'uint256', name: 'dailyRewards', type: 'uint256' },
-            { internalType: 'uint256', name: 'weeklyRewards', type: 'uint256' },
-            { internalType: 'uint256', name: 'monthlyRewards', type: 'uint256' },
-            { internalType: 'uint256', name: 'totalEarnings', type: 'uint256' },
-            { internalType: 'uint256', name: 'authorityRank', type: 'uint256' },
-            { internalType: 'uint256', name: 'connectedPeers', type: 'uint256' },
-          ],
-          internalType: 'struct FastPayAuthorityManager.AuthorityMetrics',
-          name: '',
-          type: 'tuple',
-        },
-      ],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [],
-      name: 'getActiveAuthorities',
-      outputs: [{ internalType: 'address[]', name: '', type: 'address[]' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [],
-      name: 'claimRewards',
-      outputs: [],
-      stateMutability: 'nonpayable',
-      type: 'function',
-    },
-    {
-      inputs: [{ internalType: 'address', name: 'authority', type: 'address' }],
-      name: 'calculateRewards',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [],
-      name: 'getActiveAuthorityCount',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    // Constants
-    {
-      inputs: [],
-      name: 'MINIMUM_STAKE',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [],
-      name: 'MAXIMUM_STAKE',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [],
-      name: 'MINIMUM_LOCK_DURATION',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    {
-      inputs: [],
-      name: 'MAXIMUM_LOCK_DURATION',
-      outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-      stateMutability: 'view',
-      type: 'function',
-    },
-    // Events
-    {
-      anonymous: false,
-      inputs: [
-        { indexed: true, internalType: 'address', name: 'authority', type: 'address' },
-        { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
-        { indexed: false, internalType: 'uint256', name: 'duration', type: 'uint256' },
-      ],
-      name: 'AuthorityStaked',
-      type: 'event',
-    },
-    {
-      anonymous: false,
-      inputs: [
-        { indexed: true, internalType: 'address', name: 'authority', type: 'address' },
-        { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
-        { indexed: false, internalType: 'uint256', name: 'rewards', type: 'uint256' },
-      ],
-      name: 'AuthorityUnstaked',
-      type: 'event',
-    },
-    {
-      anonymous: false,
-      inputs: [
-        { indexed: true, internalType: 'address', name: 'authority', type: 'address' },
-        { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
-      ],
-      name: 'RewardsClaimed',
-      type: 'event',
-    },
-  ]
-};
+    // Authority management functions would go here
+    'function getAuthorityInfo(address authority) external view returns (string memory name, bool active)',
+    'function isAuthorityActive(address authority) external view returns (bool)',
+  ],
+} as const;
 
-// Token contracts (USDT, USDC)
-export const TOKEN_CONTRACTS = {
+// ERC20 Token ABI
+export const ERC20_ABI = [
+  'function name() external view returns (string)',
+  'function symbol() external view returns (string)',
+  'function decimals() external view returns (uint8)',
+  'function totalSupply() external view returns (uint256)',
+  'function balanceOf(address account) external view returns (uint256)',
+  'function transfer(address to, uint256 amount) external returns (bool)',
+  'function allowance(address owner, address spender) external view returns (uint256)',
+  'function approve(address spender, uint256 amount) external returns (bool)',
+  'function transferFrom(address from, address to, uint256 amount) external returns (bool)',
+  'event Transfer(address indexed from, address indexed to, uint256 value)',
+  'event Approval(address indexed owner, address indexed spender, uint256 value)',
+] as const;
+
+// Supported tokens configuration for SmartPay
+export const SUPPORTED_TOKENS = {
+  XTZ: {
+    address: NATIVE_TOKEN,
+    decimals: 18,
+    symbol: 'XTZ',
+    name: 'Tezos',
+    isNative: true,
+    icon: '/xtz.svg',
+  },
   USDT: {
     address: (import.meta.env.VITE_USDT_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
     decimals: 6,
     symbol: 'USDT',
     name: 'Tether USD',
+    isNative: false,
+    icon: '/usdt.svg',
   },
   USDC: {
     address: (import.meta.env.VITE_USDC_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
     decimals: 6,
     symbol: 'USDC',
     name: 'USD Coin',
+    isNative: false,
+    icon: '/usdc.svg',
   },
-};
+} as const;
+
+// Type for supported token symbols
+export type SupportedToken = keyof typeof SUPPORTED_TOKENS;
+export type TokenSymbol = SupportedToken; // Alias for backwards compatibility
+
+// Network Configuration
+export const ETHERLINK_CHAIN_CONFIG = {
+  id: parseInt(import.meta.env.VITE_CHAIN_ID || '128123'),
+  name: import.meta.env.VITE_CHAIN_NAME || 'Etherlink Testnet',
+  network: 'etherlink-testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Tezos',
+    symbol: 'XTZ',
+  },
+  rpcUrls: {
+    default: {
+      http: [import.meta.env.VITE_RPC_URL || 'https://node.ghostnet.etherlink.com'],
+    },
+    public: {
+      http: [import.meta.env.VITE_RPC_URL || 'https://node.ghostnet.etherlink.com'],
+    },
+  },
+  blockExplorers: {
+    default: { 
+      name: 'Etherlink Explorer', 
+      url: 'https://testnet.explorer.etherlink.com' 
+    },
+  },
+  testnet: true,
+} as const;
 
 // Contract addresses by chain ID
 export const CONTRACT_ADDRESSES = {
-  // Etherlink Mainnet (Chain ID: 42793)
-  42793: {
-    fastPay: import.meta.env.VITE_FASTPAY_CONTRACT_ADDRESS as Address,
-    authority: import.meta.env.VITE_FASTPAY_AUTHORITY_CONTRACT_ADDRESS as Address,
-    usdt: import.meta.env.VITE_USDT_CONTRACT_ADDRESS as Address,
-    usdc: import.meta.env.VITE_USDC_CONTRACT_ADDRESS as Address,
+  [ETHERLINK_CHAIN_CONFIG.id]: {
+    fastpay: FASTPAY_CONTRACT.address,
+    authority: FASTPAY_AUTHORITY_CONTRACT.address,
+    tokens: {
+      USDT: SUPPORTED_TOKENS.USDT.address,
+      USDC: SUPPORTED_TOKENS.USDC.address,
+    },
   },
-  // Etherlink Testnet (Chain ID: 128123)
-  128123: {
-    fastPay: import.meta.env.VITE_FASTPAY_CONTRACT_ADDRESS_TESTNET as Address,
-    authority: import.meta.env.VITE_FASTPAY_AUTHORITY_CONTRACT_ADDRESS_TESTNET as Address,
-    usdt: import.meta.env.VITE_USDT_CONTRACT_ADDRESS_TESTNET as Address,
-    usdc: import.meta.env.VITE_USDC_CONTRACT_ADDRESS_TESTNET as Address,
-  },
-};
+} as const;
 
 // Helper function to get contract addresses for current chain
 export function getContractAddresses(chainId: number) {

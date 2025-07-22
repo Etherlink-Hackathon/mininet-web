@@ -6,22 +6,22 @@ import {
   DialogActions,
   Button,
   TextField,
-  Box,
-  Typography,
-  Select,
-  MenuItem,
   FormControl,
   InputLabel,
+  Select,
+  MenuItem,
+  Box,
+  Typography,
   Alert,
   CircularProgress,
 } from '@mui/material';
 import { Send } from '@mui/icons-material';
-import { ShardInfo } from '../types/api';
+import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
 
 interface QuickPaymentModalProps {
   open: boolean;
   onClose: () => void;
-  shards: ShardInfo[];
+  shards: any[]; // You can type this properly based on your shard structure
 }
 
 const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
@@ -32,7 +32,7 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   const [amount, setAmount] = useState('');
   const [recipient, setRecipient] = useState('');
   const [selectedCluster, setSelectedCluster] = useState('');
-  const [token, setToken] = useState<'USDT' | 'USDC'>('USDT');
+  const [token, setToken] = useState<TokenSymbol>('XTZ');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -76,92 +76,97 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>
-        <Box display="flex" alignItems="center" gap={1}>
+        <Box display="flex" alignItems="center" gap={2}>
           <Send color="primary" />
           <Typography variant="h6">Quick Payment</Typography>
         </Box>
       </DialogTitle>
-      
-      <DialogContent>
+
+      <DialogContent sx={{ pt: 2 }}>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
-        
+
         {success && (
           <Alert severity="success" sx={{ mb: 2 }}>
             Payment sent successfully!
           </Alert>
         )}
 
-        <FormControl fullWidth disabled={loading || success} sx={{ mb: 2, mt: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* Token Selection */}
+          <FormControl fullWidth>
             <InputLabel>Token</InputLabel>
             <Select
               value={token}
-              label="Token"
-              onChange={(e) => setToken(e.target.value as 'USDT' | 'USDC')}
+              onChange={(e) => setToken(e.target.value as TokenSymbol)}
+              disabled={loading}
             >
-              <MenuItem value="USDT">
-                <Box display="flex" alignItems="center" gap={1}>
-                  <img src="/usdt.svg" alt="USDT" width={20} height={20} />
-                  USDT
-                </Box>
-              </MenuItem>
-              <MenuItem value="USDC">
-                <Box display="flex" alignItems="center" gap={1}>
-                  <img src="/usdc.svg" alt="USDC" width={20} height={20} />
-                  USDC
-                </Box>
-              </MenuItem>
+              {Object.keys(SUPPORTED_TOKENS).map((tokenSymbol) => {
+                const tokenKey = tokenSymbol as TokenSymbol;
+                const tokenConfig = SUPPORTED_TOKENS[tokenKey];
+                return (
+                  <MenuItem key={tokenSymbol} value={tokenSymbol}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <img 
+                        src={tokenConfig.icon} 
+                        alt={tokenConfig.symbol} 
+                        width={20} 
+                        height={20} 
+                      />
+                      {tokenConfig.symbol}
+                    </Box>
+                  </MenuItem>
+                );
+              })}
             </Select>
           </FormControl>
 
-        <Box display="flex" flexDirection="column" gap={3} pt={1}>
+          {/* Amount */}
           <TextField
+            fullWidth
             label="Amount"
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            fullWidth
-            disabled={loading || success}
-            InputProps={{
-              startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
-            }}
+            disabled={loading}
+            placeholder={`Enter amount in ${SUPPORTED_TOKENS[token].symbol}`}
           />
-          
+
+          {/* Recipient */}
           <TextField
+            fullWidth
             label="Recipient Address"
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
-            fullWidth
-            disabled={loading || success}
-            placeholder="0x1234..."
+            disabled={loading}
+            placeholder="Enter recipient's address"
           />
-          
-          <FormControl fullWidth disabled={loading || success}>
-            <InputLabel>Cluster</InputLabel>
+
+          {/* Cluster Selection */}
+          <FormControl fullWidth>
+            <InputLabel>Authority Cluster</InputLabel>
             <Select
               value={selectedCluster}
               onChange={(e) => setSelectedCluster(e.target.value)}
-              label="Cluster"
+              disabled={loading}
             >
-              {shards.map((shard) => (
-                <MenuItem key={shard.shard_id} value={shard.shard_id}>
-                  {shard.shard_id}
-                </MenuItem>
-              ))}
+              {shards.length > 0 ? (
+                shards.map((shard, index) => (
+                  <MenuItem key={index} value={shard.id || index}>
+                    Cluster {index + 1} ({shard.nodes?.length || 0} nodes)
+                  </MenuItem>
+                ))
+              ) : (
+                <MenuItem value="default">Default Cluster</MenuItem>
+              )}
             </Select>
           </FormControl>
-
-          {shards.length === 0 && (
-            <Alert severity="warning">
-              No online authorities available. Please try again later.
-            </Alert>
-          )}
         </Box>
       </DialogContent>
-      
+
       <DialogActions>
         <Button onClick={handleClose} disabled={loading}>
           Cancel
@@ -169,10 +174,10 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={loading || success || shards.length === 0}
-          startIcon={loading ? <CircularProgress size={20} /> : <Send />}
+          disabled={loading || !amount || !recipient || !selectedCluster}
+          startIcon={loading ? <CircularProgress size={16} /> : <Send />}
         >
-          {loading ? 'Sending...' : success ? 'Sent!' : 'Send Payment'}
+          {loading ? 'Sending...' : `Send ${amount} ${SUPPORTED_TOKENS[token].symbol}`}
         </Button>
       </DialogActions>
     </Dialog>

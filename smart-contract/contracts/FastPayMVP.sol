@@ -6,13 +6,16 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
- * @title FastPayMVP
- * @dev Minimal viable FastPay smart contract for Primary blockchain
- * Based on the original FastPay design by Facebook/Meta
- * @author FastPay Team
+ * @title SmartPayMVP
+ * @dev Minimal viable SmartPay smart contract for Primary blockchain
+ * Based on the original SmartPay design by Facebook/Meta
+ * @author SmartPay Team
  */
-contract FastPayMVP is ReentrancyGuard {
+contract SmartPayMVP is ReentrancyGuard {
     using SafeERC20 for IERC20;
+
+    /// @dev Address used to represent native XTZ token
+    address public constant NATIVE_TOKEN = address(0);
 
     /// @dev Account state on Primary blockchain
     struct AccountOnchainState {
@@ -21,11 +24,11 @@ contract FastPayMVP is ReentrancyGuard {
         /// Prevent spending actions from this account to Primary to be redeemed more than once
         /// Last sequence number that was successfully redeemed to Primary
         uint256 lastRedeemedSequence;
-        /// FastPay account balance (funded from Primary)
+        /// SmartPay account balance (funded from Primary)
         mapping(address => uint256) balances; // token => balance
     }
 
-    /// @dev Funding transaction from Primary to FastPay
+    /// @dev Funding transaction from Primary to SmartPay
     struct FundingTransaction {
         address sender;
         address token;
@@ -34,7 +37,7 @@ contract FastPayMVP is ReentrancyGuard {
         uint256 transactionIndex;
     }
 
-    /// @dev Transfer certificate for off-chain FastPay payments
+    /// @dev Transfer certificate for off-chain SmartPay payments
     struct TransferCertificate {
         address sender;
         address recipient;
@@ -44,7 +47,7 @@ contract FastPayMVP is ReentrancyGuard {
         uint256 timestamp;
     }
 
-    /// @dev Redeem transaction from FastPay to Primary
+    /// @dev Redeem transaction from SmartPay to Primary
     struct RedeemTransaction {
         TransferCertificate transferCertificate;
         bytes signature; // For future committee validation
@@ -54,7 +57,7 @@ contract FastPayMVP is ReentrancyGuard {
     mapping(address => AccountOnchainState) private accounts;
     mapping(bytes32 => bool) private processedRedemptions;
     
-    /// Total balance of tokens in the FastPay system
+    /// Total balance of tokens in the SmartPay system
     mapping(address => uint256) public totalBalance;
     
     /// The latest transaction index included in the blockchain
@@ -65,10 +68,18 @@ contract FastPayMVP is ReentrancyGuard {
     
     uint256 public totalAccounts;
 
-    /// @dev Events matching original FastPay design
+    /// @dev Events matching original SmartPay design
     event AccountRegistered(address indexed account, uint256 timestamp);
     event FundingCompleted(address indexed sender, address indexed token, uint256 amount, uint256 transactionIndex);
-    event RedemptionCompleted(address indexed sender, address indexed recipient, address indexed token, uint256 amount, uint256 sequenceNumber);
+    event RedemptionCompleted(
+        address indexed sender,
+        address indexed recipient,
+        address indexed token,
+        uint256 amount,
+        uint256 sequenceNumber,
+        uint256 timestamp,
+        bytes signature
+    );
     event TransferCertificateCreated(address indexed sender, address indexed recipient, bytes32 certificateHash);
 
     /// @dev Custom errors
@@ -98,7 +109,7 @@ contract FastPayMVP is ReentrancyGuard {
     }
 
     /**
-     * @dev Register a new FastPay account (free registration)
+     * @dev Register a new SmartPay account (free registration)
      */
     function registerAccount() external {
         if (accounts[msg.sender].registered) revert AccountAlreadyRegistered();
@@ -113,7 +124,7 @@ contract FastPayMVP is ReentrancyGuard {
     }
 
     /**
-     * @dev Check if an account is registered with FastPay
+     * @dev Check if an account is registered with SmartPay
      * @param account The account address to check
      * @return bool Whether the account is registered
      */
@@ -141,15 +152,15 @@ contract FastPayMVP is ReentrancyGuard {
      * @dev Get account balance for a specific token
      * @param account The account address
      * @param token The token address
-     * @return balance The account's FastPay balance for the token
+     * @return balance The account's SmartPay balance for the token
      */
     function getAccountBalance(address account, address token) external view returns (uint256) {
         return accounts[account].balances[token];
     }
 
     /**
-     * @dev Handle funding transaction from Primary to FastPay
-     * This represents transferring tokens from Primary blockchain to FastPay system
+     * @dev Handle funding transaction from Primary to SmartPay (ERC20 tokens)
+     * This represents transferring tokens from Primary blockchain to SmartPay system
      * @param token The ERC20 token address
      * @param amount The amount to fund
      */
@@ -160,13 +171,14 @@ contract FastPayMVP is ReentrancyGuard {
         external 
         nonReentrant
         onlyRegisteredAccount
-        validAddress(token)
         validAmount(amount)
     {
-        // Transfer tokens from Primary (msg.sender) to FastPay system (this contract)
+        require(token != NATIVE_TOKEN, "Use handleNativeFundingTransaction for XTZ");
+        
+        // Transfer tokens from Primary (msg.sender) to SmartPay system (this contract)
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         
-        // Update account balance in FastPay system
+        // Update account balance in SmartPay system
         accounts[msg.sender].balances[token] += amount;
         
         // Update total balance in the system
@@ -186,9 +198,39 @@ contract FastPayMVP is ReentrancyGuard {
     }
 
     /**
+     * @dev Handle native XTZ funding transaction from Primary to SmartPay
+     * This represents transferring native XTZ from Primary blockchain to SmartPay system
+     */
+    function handleNativeFundingTransaction() 
+        external 
+        payable
+        nonReentrant
+        onlyRegisteredAccount
+        validAmount(msg.value)
+    {
+        // Update account balance in SmartPay system (using NATIVE_TOKEN as key)
+        accounts[msg.sender].balances[NATIVE_TOKEN] += msg.value;
+        
+        // Update total balance in the system
+        totalBalance[NATIVE_TOKEN] += msg.value;
+        
+        // Record the funding transaction
+        lastTransactionIndex++;
+        blockchain.push(FundingTransaction({
+            sender: msg.sender,
+            token: NATIVE_TOKEN,
+            amount: msg.value,
+            timestamp: block.timestamp,
+            transactionIndex: lastTransactionIndex
+        }));
+
+        emit FundingCompleted(msg.sender, NATIVE_TOKEN, msg.value, lastTransactionIndex);
+    }
+
+    /**
      * @dev Create a transfer certificate for off-chain payments
      * @param recipient The recipient address
-     * @param token The token address
+     * @param token The token address (use NATIVE_TOKEN for XTZ)
      * @param amount The transfer amount
      * @param sequenceNumber The sequence number for replay protection
      * @return bytes32 The certificate hash
@@ -202,10 +244,10 @@ contract FastPayMVP is ReentrancyGuard {
         external 
         onlyRegisteredAccount
         validAddress(recipient)
-        validAddress(token)
         validAmount(amount)
         returns (bytes32)
     {
+        // Note: token can be NATIVE_TOKEN (address(0)) for XTZ
         // Check sender has sufficient balance
         if (accounts[msg.sender].balances[token] < amount) revert InsufficientBalance();
         
@@ -228,7 +270,7 @@ contract FastPayMVP is ReentrancyGuard {
     }
 
     /**
-     * @dev Handle redeem transaction from FastPay to Primary
+     * @dev Handle redeem transaction from SmartPay to Primary
      * @param redeemTx The redeem transaction data
      */
     function handleRedeemTransaction(RedeemTransaction calldata redeemTx) 
@@ -236,30 +278,50 @@ contract FastPayMVP is ReentrancyGuard {
         nonReentrant
     {
         TransferCertificate memory cert = redeemTx.transferCertificate;
-        
-        // Validate sequence number
+
+        // Generate certificate hash for verification
+        bytes32 certHash = keccak256(abi.encode(cert));
+
+        // Check if already processed
+        if (processedRedemptions[certHash]) revert CertificateAlreadyRedeemed();
+
+        // Check certificate expiry: must be within 24 hours (86,400 seconds)
+        if (block.timestamp > cert.timestamp + 24 hours) {
+            revert("CertificateExpired");
+        }
+
+        // Validate sequence number AFTER ensuring not previously redeemed
         if (cert.sequenceNumber <= accounts[cert.sender].lastRedeemedSequence) {
             revert InvalidSequenceNumber();
         }
-        
-        // Generate certificate hash for verification
-        bytes32 certHash = keccak256(abi.encode(cert));
-        
-        // Check if already processed
-        if (processedRedemptions[certHash]) revert CertificateAlreadyRedeemed();
-        
-        // Mark as processed
+
+        // Mark as processed and update last redeemed sequence
         processedRedemptions[certHash] = true;
         accounts[cert.sender].lastRedeemedSequence = cert.sequenceNumber;
-        
+
         // Update balances
         accounts[cert.sender].balances[cert.token] -= cert.amount;
         totalBalance[cert.token] -= cert.amount;
-        
-        // Transfer tokens from FastPay system to recipient
-        IERC20(cert.token).safeTransfer(cert.recipient, cert.amount);
-        
-        emit RedemptionCompleted(cert.sender, cert.recipient, cert.token, cert.amount, cert.sequenceNumber);
+
+        // Transfer tokens or native XTZ from SmartPay system to recipient
+        if (cert.token == NATIVE_TOKEN) {
+            // Handle native XTZ transfer
+            require(address(this).balance >= cert.amount, "Insufficient native balance");
+            payable(cert.recipient).transfer(cert.amount);
+        } else {
+            // Handle ERC20 token transfer
+            IERC20(cert.token).safeTransfer(cert.recipient, cert.amount);
+        }
+
+        emit RedemptionCompleted(
+            cert.sender,
+            cert.recipient,
+            cert.token,
+            cert.amount,
+            cert.sequenceNumber,
+            block.timestamp,
+            redeemTx.signature
+        );
     }
 
     /**
@@ -288,5 +350,31 @@ contract FastPayMVP is ReentrancyGuard {
      */
     function isCertificateRedeemed(bytes32 certificateHash) external view returns (bool) {
         return processedRedemptions[certificateHash];
+    }
+
+    /**
+     * @dev Check if a token is the native XTZ token
+     * @param token The token address to check
+     * @return bool Whether the token is native XTZ
+     */
+    function isNativeToken(address token) external pure returns (bool) {
+        return token == NATIVE_TOKEN;
+    }
+
+    /**
+     * @dev Get contract's native XTZ balance
+     * @return uint256 The contract's native XTZ balance
+     */
+    function getNativeBalance() external view returns (uint256) {
+        return address(this).balance;
+    }
+
+    /**
+     * @dev Receive function to accept native XTZ deposits
+     * Note: Direct transfers are not tracked. Use handleNativeFundingTransaction instead.
+     */
+    receive() external payable {
+        // Allow contract to receive native XTZ
+        // Note: These are not tracked as SmartPay funding transactions
     }
 } 

@@ -16,13 +16,13 @@ import {
   Stepper,
   Step,
   StepLabel,
-  CircularProgress,
-  IconButton,
   Card,
   CardContent,
+  CircularProgress,
 } from '@mui/material';
-import { Close, AccountBalanceWallet, TrendingUp } from '@mui/icons-material';
+import { AccountBalanceWallet, TrendingUp } from '@mui/icons-material';
 import { useWalletContext } from '../context/WalletContext';
+import { SUPPORTED_TOKENS, type TokenSymbol, type SupportedToken } from '../config/contracts';
 
 interface DepositModalProps {
   open: boolean;
@@ -34,17 +34,32 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
     balances,
     isRegistered,
     depositStatus,
-    depositToFastPay,
+    depositToSmartPay,
     clearErrors,
   } = useWalletContext();
 
-  const [token, setToken] = useState<'USDT' | 'USDC'>('USDT');
+  const [token, setToken] = useState<TokenSymbol>('XTZ');
   const [amount, setAmount] = useState('');
   const [errors, setErrors] = useState<{ amount?: string }>({});
 
-  const steps = ['Approve Token', 'Deposit to FastPay', 'Completed'];
+  const getSteps = () => {
+    if (token === 'XTZ') {
+      return ['Deposit to SmartPay', 'Completed'];
+    }
+    return ['Approve Token', 'Deposit to SmartPay', 'Completed'];
+  };
 
   const getActiveStep = () => {
+    const steps = getSteps();
+    if (token === 'XTZ') {
+      // Native XTZ flow (no approval needed)
+      switch (depositStatus.currentStep) {
+        case 'depositing': return 0;
+        case 'completed': return 1;
+        default: return -1;
+      }
+    }
+    // ERC20 token flow (requires approval)
     switch (depositStatus.currentStep) {
       case 'approving': return 0;
       case 'depositing': return 1;
@@ -74,7 +89,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
     clearErrors();
     
     try {
-      const result = await depositToFastPay(token, amount);
+      const result = await depositToSmartPay(token, amount);
       if (result.success) {
         // Reset form on success
         setAmount('');
@@ -102,69 +117,100 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
     return parseFloat(value).toFixed(6);
   };
 
+  // Helper function to get token config safely
+  const getTokenConfig = (tokenSymbol: TokenSymbol) => {
+    return SUPPORTED_TOKENS[tokenSymbol as keyof typeof SUPPORTED_TOKENS];
+  };
+
   const isTransactionPending = depositStatus.isPending || depositStatus.isConfirming;
+
+  if (!isRegistered) {
+    return (
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Account Not Registered</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning">
+            You need to register your account with SmartPay before you can deposit tokens.
+            Please register your account first.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog 
       open={open} 
       onClose={handleClose} 
-      maxWidth="sm" 
+      maxWidth="md" 
       fullWidth
       PaperProps={{
-        sx: { minHeight: '500px' }
+        sx: {
+          background: 'rgba(26, 31, 46, 0.95)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+        }
       }}
     >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6">Deposit to FastPay</Typography>
-        <IconButton 
-          onClick={handleClose} 
-          disabled={isTransactionPending}
-          sx={{ color: 'text.secondary' }}
-        >
-          <Close />
-        </IconButton>
+      <DialogTitle 
+        sx={{ 
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(108, 92, 231, 0.1) 100%)'
+        }}
+      >
+        <Box display="flex" alignItems="center" gap={2}>
+          <AccountBalanceWallet color="primary" />
+          <Typography variant="h6" fontWeight={600}>
+            Deposit to SmartPay
+          </Typography>
+        </Box>
       </DialogTitle>
 
-      <DialogContent>
-        {!isRegistered && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            You need to register your account with FastPay before making deposits.
-          </Alert>
+      <DialogContent sx={{ p: 3 }}>
+        {/* Progress Stepper */}
+        {isTransactionPending && (
+          <Box mb={3}>
+            <Stepper 
+              activeStep={getActiveStep()}
+              alternativeLabel
+              sx={{
+                '& .MuiStepLabel-root': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                },
+                '& .MuiStepIcon-root': {
+                  color: 'rgba(255, 255, 255, 0.3)',
+                  '&.Mui-active': {
+                    color: '#00D2FF',
+                  },
+                  '&.Mui-completed': {
+                    color: '#4CAF50',
+                  },
+                },
+              }}
+            >
+              {getSteps().map((label) => (
+                <Step key={label}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
         )}
 
+        {/* Transaction Status */}
         {depositStatus.error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {depositStatus.error}
           </Alert>
         )}
 
-        {depositStatus.currentStep !== 'idle' && depositStatus.currentStep !== 'failed' && (
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Transaction Progress
-            </Typography>
-            <Stepper activeStep={getActiveStep()} sx={{ mb: 2 }}>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-            
-            {isTransactionPending && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CircularProgress size={16} />
-                <Typography variant="body2" color="text.secondary">
-                  {depositStatus.isConfirming 
-                    ? 'Confirming transaction...' 
-                    : depositStatus.currentStep === 'approving'
-                    ? 'Approving token...'
-                    : 'Processing deposit...'
-                  }
-                </Typography>
-              </Box>
-            )}
-          </Box>
+        {depositStatus.currentStep === 'completed' && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Deposit completed successfully! Your {getTokenConfig(token).symbol} is now available in SmartPay.
+          </Alert>
         )}
 
         <Box sx={{ mb: 3 }}>
@@ -172,17 +218,24 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
             <InputLabel>Token</InputLabel>
             <Select
               value={token}
-              onChange={(e) => setToken(e.target.value as 'USDT' | 'USDC')}
+              onChange={(e) => setToken(e.target.value as TokenSymbol)}
               disabled={isTransactionPending}
             >
-              <MenuItem value="USDT">
-                <img src="/usdt.svg" alt="USDT" width={20} height={20} style={{marginRight: '10px'}}/>
-                USDT
-              </MenuItem>
-              <MenuItem value="USDC">
-                <img src="/usdc.svg" alt="USDC" width={20} height={20} style={{marginRight: '10px'}}/>
-                USDC
-              </MenuItem>
+              {(Object.keys(SUPPORTED_TOKENS) as Array<keyof typeof SUPPORTED_TOKENS>).map((tokenSymbol) => {
+                const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
+                return (
+                  <MenuItem key={tokenSymbol} value={tokenSymbol}>
+                    <img 
+                      src={tokenConfig.icon} 
+                      alt={tokenConfig.symbol} 
+                      width={20} 
+                      height={20} 
+                      style={{marginRight: '10px'}}
+                    />
+                    {tokenConfig.symbol} - {tokenConfig.name}
+                  </MenuItem>
+                );
+              })}
             </Select>
           </FormControl>
 
@@ -202,7 +255,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
             <Card variant="outlined" sx={{ mb: 2 }}>
               <CardContent sx={{ '&:last-child': { pb: 2 } }}>
                 <Typography variant="subtitle2" gutterBottom>
-                  Current Balances ({token})
+                  Current Balances ({getTokenConfig(token).symbol})
                 </Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -216,7 +269,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <TrendingUp fontSize="small" />
-                    <Typography variant="body2">FastPay:</Typography>
+                    <Typography variant="body2">SmartPay:</Typography>
                   </Box>
                   <Typography variant="body2" fontWeight="medium">
                     {formatBalance(balances[token].fastpay)}
@@ -227,40 +280,37 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
           )}
 
           <Typography variant="body2" color="text.secondary">
-            Depositing tokens to FastPay enables you to make offline payments. This process requires two transactions: 
-            first approving the FastPay contract to spend your tokens, then transferring them to the FastPay system.
+            {token === 'XTZ' 
+              ? 'Depositing native XTZ to SmartPay enables you to make offline payments. This requires one transaction to transfer XTZ to the SmartPay system.'
+              : 'Depositing tokens to SmartPay enables you to make offline payments. This process requires two transactions: first approving the SmartPay contract to spend your tokens, then transferring them to the SmartPay system.'
+            }
           </Typography>
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3 }}>
+      <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
         <Button 
-          onClick={handleClose} 
+          onClick={handleClose}
           disabled={isTransactionPending}
         >
-          {isTransactionPending ? 'Transaction Pending' : 'Cancel'}
+          {isTransactionPending ? 'Transaction in Progress...' : 'Cancel'}
         </Button>
-        <Button 
-          onClick={handleDeposit}
+        <Button
           variant="contained"
-          disabled={
-            !isRegistered || 
-            !amount || 
-            !!errors.amount || 
-            isTransactionPending ||
-            depositStatus.currentStep === 'completed'
-          }
+          onClick={handleDeposit}
+          disabled={isTransactionPending || !amount || parseFloat(amount) <= 0}
+          startIcon={isTransactionPending ? <CircularProgress size={16} /> : undefined}
+          sx={{
+            background: 'linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #33DAFF 0%, #A29BFE 100%)',
+            },
+          }}
         >
-          {isTransactionPending ? (
-            <>
-              <CircularProgress size={16} sx={{ mr: 1 }} />
-              Processing...
-            </>
-          ) : depositStatus.currentStep === 'completed' ? (
-            'Completed'
-          ) : (
-            'Deposit'
-          )}
+          {isTransactionPending 
+            ? `${depositStatus.currentStep === 'approving' ? 'Approving...' : 'Depositing...'}` 
+            : `Deposit ${getTokenConfig(token).symbol}`
+          }
         </Button>
       </DialogActions>
     </Dialog>

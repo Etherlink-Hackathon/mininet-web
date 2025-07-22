@@ -7,20 +7,26 @@ import {
   useBalance
 } from 'wagmi';
 import { parseUnits, formatUnits, type Address } from 'viem';
-import { FASTPAY_CONTRACT, SUPPORTED_TOKENS, ERC20_ABI, getContractAddresses } from '../config/contracts';
+import { 
+  FASTPAY_CONTRACT, 
+  SUPPORTED_TOKENS, 
+  ERC20_ABI, 
+  NATIVE_TOKEN, 
+  getContractAddresses,
+  type SupportedToken 
+} from '../config/contracts';
 
-// Types for FastPay operations
-export interface FastPayBalance {
-  USDT: {
-    wallet: string; // Regular wallet balance
-    fastpay: string; // FastPay system balance
-    total: string; // Combined balance
-  };
-  USDC: {
-    wallet: string;
-    fastpay: string;
-    total: string;
-  };
+// Types for SmartPay operations
+export interface TokenBalance {
+  wallet: string; // Regular wallet balance
+  fastpay: string; // SmartPay system balance
+  total: string; // Combined balance
+}
+
+export interface SmartPayBalance {
+  XTZ: TokenBalance;
+  USDT: TokenBalance;
+  USDC: TokenBalance;
 }
 
 export interface AccountInfo {
@@ -31,14 +37,19 @@ export interface AccountInfo {
 
 export interface DepositResult {
   success: boolean;
-  transactionHash?: string;
   error?: string;
 }
 
-// Custom hooks for FastPay contract interactions
+// Extended type for all supported tokens including XTZ
+export type TokenSymbol = SupportedToken;
+
+// Helper function to format balance with proper decimals
+function formatBalance(value: bigint, decimals: number): string {
+  return formatUnits(value, decimals);
+}
 
 /**
- * Hook to check if the current account is registered with FastPay
+ * Hook to check if account is registered with SmartPay
  */
 export function useIsAccountRegistered() {
   const { address } = useAccount();
@@ -46,7 +57,7 @@ export function useIsAccountRegistered() {
   const contractAddresses = getContractAddresses(chainId);
 
   return useReadContract({
-    address: contractAddresses?.fastPay || FASTPAY_CONTRACT.address,
+    address: contractAddresses?.fastpay || FASTPAY_CONTRACT.address,
     abi: FASTPAY_CONTRACT.abi,
     functionName: 'isAccountRegistered',
     args: address ? [address] : undefined,
@@ -65,7 +76,7 @@ export function useAccountInfo() {
   const contractAddresses = getContractAddresses(chainId);
 
   return useReadContract({
-    address: contractAddresses?.fastPay || FASTPAY_CONTRACT.address,
+    address: contractAddresses?.fastpay || FASTPAY_CONTRACT.address,
     abi: FASTPAY_CONTRACT.abi,
     functionName: 'getAccountInfo',
     args: address ? [address] : undefined,
@@ -76,65 +87,7 @@ export function useAccountInfo() {
 }
 
 /**
- * Hook to get FastPay balance for a specific token
- */
-export function useFastPayBalance(tokenSymbol: 'USDT' | 'USDC') {
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
-  const tokenAddress = tokenSymbol === 'USDT' ? contractAddresses?.usdt : contractAddresses?.usdc;
-
-  return useReadContract({
-    address: contractAddresses?.fastPay || FASTPAY_CONTRACT.address,
-    abi: FASTPAY_CONTRACT.abi,
-    functionName: 'getAccountBalance',
-    args: address && tokenAddress ? [address, tokenAddress] : undefined,
-    query: {
-      enabled: !!address && !!tokenAddress,
-    },
-  });
-}
-
-/**
- * Hook to get regular wallet balance for a token
- */
-export function useTokenBalance(tokenSymbol: 'USDT' | 'USDC') {
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
-  const tokenAddress = tokenSymbol === 'USDT' ? contractAddresses?.usdt : contractAddresses?.usdc;
-
-  return useBalance({
-    address,
-    token: tokenAddress,
-    query: {
-      enabled: !!address && !!tokenAddress,
-    },
-  });
-}
-
-/**
- * Hook to get token allowance (how much the FastPay contract can spend)
- */
-export function useTokenAllowance(tokenSymbol: 'USDT' | 'USDC') {
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
-  const tokenAddress = tokenSymbol === 'USDT' ? contractAddresses?.usdt : contractAddresses?.usdc;
-
-  return useReadContract({
-    address: tokenAddress,
-    abi: ERC20_ABI,
-    functionName: 'allowance',
-    args: address && contractAddresses?.fastPay ? [address, contractAddresses.fastPay] : undefined,
-    query: {
-      enabled: !!address && !!tokenAddress && !!contractAddresses?.fastPay,
-    },
-  });
-}
-
-/**
- * Hook to register account with FastPay
+ * Hook to register account with SmartPay
  */
 export function useRegisterAccount() {
   const chainId = useChainId();
@@ -147,16 +100,11 @@ export function useRegisterAccount() {
   });
 
   const registerAccount = async () => {
-    try {
-      await writeContract({
-        address: contractAddresses?.fastPay || FASTPAY_CONTRACT.address,
-        abi: FASTPAY_CONTRACT.abi,
-        functionName: 'registerAccount',
-      });
-    } catch (err) {
-      console.error('Failed to register account:', err);
-      throw err;
-    }
+    await writeContract({
+      address: contractAddresses?.fastpay || FASTPAY_CONTRACT.address,
+      abi: FASTPAY_CONTRACT.abi,
+      functionName: 'registerAccount',
+    });
   };
 
   return {
@@ -170,7 +118,78 @@ export function useRegisterAccount() {
 }
 
 /**
- * Hook to approve token spending by FastPay contract
+ * Hook to get SmartPay balance for a specific token (including native XTZ)
+ */
+export function useSmartPayBalance(tokenSymbol: TokenSymbol) {
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const contractAddresses = getContractAddresses(chainId);
+  const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
+  const tokenAddress = tokenConfig.isNative ? NATIVE_TOKEN : tokenConfig.address;
+
+  return useReadContract({
+    address: contractAddresses?.fastpay || FASTPAY_CONTRACT.address,
+    abi: FASTPAY_CONTRACT.abi,
+    functionName: 'getAccountBalance',
+    args: address && tokenAddress ? [address, tokenAddress] : undefined,
+    query: {
+      enabled: !!address && !!tokenAddress,
+    },
+  });
+}
+
+/**
+ * Hook to get regular wallet balance for a token (ERC20 or native)
+ */
+export function useTokenBalance(tokenSymbol: TokenSymbol) {
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const contractAddresses = getContractAddresses(chainId);
+  const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
+
+  // For native XTZ, use native balance hook
+  if (tokenConfig.isNative) {
+    return useBalance({
+      address,
+      query: {
+        enabled: !!address,
+      },
+    });
+  }
+
+  // For ERC20 tokens, use token balance hook
+  return useBalance({
+    address,
+    token: tokenConfig.address,
+    query: {
+      enabled: !!address,
+    },
+  });
+}
+
+/**
+ * Hook to get token allowance (how much the SmartPay contract can spend)
+ * Only applicable to ERC20 tokens, not native XTZ
+ */
+export function useTokenAllowance(tokenSymbol: Exclude<TokenSymbol, 'XTZ'>) {
+  const { address } = useAccount();
+  const chainId = useChainId();
+  const contractAddresses = getContractAddresses(chainId);
+  const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
+
+  return useReadContract({
+    address: tokenConfig.address,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: address && contractAddresses?.fastpay ? [address, contractAddresses.fastpay] : undefined,
+    query: {
+      enabled: !!address && !tokenConfig.isNative && !!contractAddresses?.fastpay,
+    },
+  });
+}
+
+/**
+ * Hook to approve token spending by SmartPay contract (ERC20 only)
  */
 export function useApproveToken() {
   const chainId = useChainId();
@@ -182,11 +201,14 @@ export function useApproveToken() {
     hash,
   });
 
-  const approveToken = async (tokenSymbol: 'USDT' | 'USDC', amount: string) => {
-    const tokenAddress = tokenSymbol === 'USDT' ? contractAddresses?.usdt : contractAddresses?.usdc;
+  const approveToken = async (tokenSymbol: Exclude<TokenSymbol, 'XTZ'>, amount: string) => {
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
     
-    if (!tokenAddress || !contractAddresses?.fastPay) {
+    if (tokenConfig.isNative) {
+      throw new Error('Native tokens do not require approval');
+    }
+
+    if (!contractAddresses?.fastpay) {
       throw new Error('Contract addresses not configured');
     }
 
@@ -194,10 +216,10 @@ export function useApproveToken() {
       const parsedAmount = parseUnits(amount, tokenConfig.decimals);
       
       await writeContract({
-        address: tokenAddress,
+        address: tokenConfig.address,
         abi: ERC20_ABI,
         functionName: 'approve',
-        args: [contractAddresses.fastPay, parsedAmount],
+        args: [contractAddresses.fastpay, parsedAmount],
       });
     } catch (err) {
       console.error('Failed to approve token:', err);
@@ -216,9 +238,9 @@ export function useApproveToken() {
 }
 
 /**
- * Hook to deposit tokens to FastPay system
+ * Hook to deposit tokens to SmartPay system (ERC20 tokens)
  */
-export function useDepositToFastPay() {
+export function useDepositToSmartPay() {
   const chainId = useChainId();
   const contractAddresses = getContractAddresses(chainId);
   
@@ -228,11 +250,14 @@ export function useDepositToFastPay() {
     hash,
   });
 
-  const deposit = async (tokenSymbol: 'USDT' | 'USDC', amount: string) => {
-    const tokenAddress = tokenSymbol === 'USDT' ? contractAddresses?.usdt : contractAddresses?.usdc;
+  const deposit = async (tokenSymbol: Exclude<TokenSymbol, 'XTZ'>, amount: string) => {
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
     
-    if (!tokenAddress || !contractAddresses?.fastPay) {
+    if (tokenConfig.isNative) {
+      throw new Error('Use depositNativeToSmartPay for XTZ deposits');
+    }
+
+    if (!contractAddresses?.fastpay) {
       throw new Error('Contract addresses not configured');
     }
 
@@ -240,13 +265,13 @@ export function useDepositToFastPay() {
       const parsedAmount = parseUnits(amount, tokenConfig.decimals);
       
       await writeContract({
-        address: contractAddresses.fastPay,
+        address: contractAddresses.fastpay,
         abi: FASTPAY_CONTRACT.abi,
         functionName: 'handleFundingTransaction',
-        args: [tokenAddress, parsedAmount],
+        args: [tokenConfig.address, parsedAmount],
       });
     } catch (err) {
-      console.error('Failed to deposit to FastPay:', err);
+      console.error('Failed to deposit to SmartPay:', err);
       throw err;
     }
   };
@@ -262,49 +287,94 @@ export function useDepositToFastPay() {
 }
 
 /**
- * Utility function to format balance with proper decimals
+ * Hook to deposit native XTZ to SmartPay system
  */
-export function formatBalance(balance: bigint, decimals: number): string {
-  return formatUnits(balance, decimals);
+export function useDepositNativeToSmartPay() {
+  const chainId = useChainId();
+  const contractAddresses = getContractAddresses(chainId);
+  
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  const depositNative = async (amount: string) => {
+    if (!contractAddresses?.fastpay) {
+      throw new Error('Contract addresses not configured');
+    }
+
+    try {
+      const parsedAmount = parseUnits(amount, SUPPORTED_TOKENS.XTZ.decimals);
+      
+      await writeContract({
+        address: contractAddresses.fastpay,
+        abi: FASTPAY_CONTRACT.abi,
+        functionName: 'handleNativeFundingTransaction',
+        value: parsedAmount,
+      });
+    } catch (err) {
+      console.error('Failed to deposit native XTZ to SmartPay:', err);
+      throw err;
+    }
+  };
+
+  return {
+    depositNative,
+    hash,
+    isPending,
+    isConfirming,
+    isConfirmed,
+    error,
+  };
 }
 
 /**
  * Utility function to get combined balance data
  */
 export function useCombinedBalances(): {
-  balances: FastPayBalance | null;
+  balances: SmartPayBalance | null;
   isLoading: boolean;
   error: string | null;
 } {
   // Regular wallet balances
+  const { data: xtzWallet, isLoading: xtzWalletLoading } = useTokenBalance('XTZ');
   const { data: usdtWallet, isLoading: usdtWalletLoading } = useTokenBalance('USDT');
   const { data: usdcWallet, isLoading: usdcWalletLoading } = useTokenBalance('USDC');
   
-  // FastPay balances
-  const { data: usdtFastPay, isLoading: usdtFastPayLoading } = useFastPayBalance('USDT');
-  const { data: usdcFastPay, isLoading: usdcFastPayLoading } = useFastPayBalance('USDC');
+  // SmartPay balances
+  const { data: xtzSmartPay, isLoading: xtzSmartPayLoading } = useSmartPayBalance('XTZ');
+  const { data: usdtSmartPay, isLoading: usdtSmartPayLoading } = useSmartPayBalance('USDT');
+  const { data: usdcSmartPay, isLoading: usdcSmartPayLoading } = useSmartPayBalance('USDC');
 
-  const isLoading = usdtWalletLoading || usdcWalletLoading || usdtFastPayLoading || usdcFastPayLoading;
+  const isLoading = xtzWalletLoading || usdtWalletLoading || usdcWalletLoading || 
+                   xtzSmartPayLoading || usdtSmartPayLoading || usdcSmartPayLoading;
 
   if (isLoading) {
     return { balances: null, isLoading: true, error: null };
   }
 
   try {
-    const balances: FastPayBalance = {
+    const balances: SmartPayBalance = {
+      XTZ: {
+        wallet: xtzWallet ? formatBalance(xtzWallet.value, SUPPORTED_TOKENS.XTZ.decimals) : '0',
+        fastpay: xtzSmartPay ? formatBalance(xtzSmartPay as bigint, SUPPORTED_TOKENS.XTZ.decimals) : '0',
+        total: '0', // Will be calculated below
+      },
       USDT: {
         wallet: usdtWallet ? formatBalance(usdtWallet.value, SUPPORTED_TOKENS.USDT.decimals) : '0',
-        fastpay: usdtFastPay ? formatBalance(usdtFastPay as bigint, SUPPORTED_TOKENS.USDT.decimals) : '0',
+        fastpay: usdtSmartPay ? formatBalance(usdtSmartPay as bigint, SUPPORTED_TOKENS.USDT.decimals) : '0',
         total: '0', // Will be calculated below
       },
       USDC: {
         wallet: usdcWallet ? formatBalance(usdcWallet.value, SUPPORTED_TOKENS.USDC.decimals) : '0',
-        fastpay: usdcFastPay ? formatBalance(usdcFastPay as bigint, SUPPORTED_TOKENS.USDC.decimals) : '0',
+        fastpay: usdcSmartPay ? formatBalance(usdcSmartPay as bigint, SUPPORTED_TOKENS.USDC.decimals) : '0',
         total: '0', // Will be calculated below
       },
     };
 
     // Calculate totals
+    balances.XTZ.total = (parseFloat(balances.XTZ.wallet) + parseFloat(balances.XTZ.fastpay)).toFixed(6);
     balances.USDT.total = (parseFloat(balances.USDT.wallet) + parseFloat(balances.USDT.fastpay)).toFixed(6);
     balances.USDC.total = (parseFloat(balances.USDC.wallet) + parseFloat(balances.USDC.fastpay)).toFixed(6);
 
@@ -315,20 +385,36 @@ export function useCombinedBalances(): {
 }
 
 /**
- * Complete deposit workflow (approve + deposit)
+ * Complete deposit workflow (approve + deposit for ERC20, direct deposit for XTZ)
  */
 export async function performDeposit(
-  tokenSymbol: 'USDT' | 'USDC',
+  tokenSymbol: TokenSymbol,
   amount: string,
-  approveToken: (token: 'USDT' | 'USDC', amount: string) => Promise<void>,
-  deposit: (token: 'USDT' | 'USDC', amount: string) => Promise<void>
+  approveToken?: (token: Exclude<TokenSymbol, 'XTZ'>, amount: string) => Promise<void>,
+  deposit?: (token: Exclude<TokenSymbol, 'XTZ'>, amount: string) => Promise<void>,
+  depositNative?: (amount: string) => Promise<void>
 ): Promise<DepositResult> {
   try {
-    // Step 1: Approve token spending
-    await approveToken(tokenSymbol, amount);
+    const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
     
-    // Step 2: Deposit to FastPay
-    await deposit(tokenSymbol, amount);
+    if (tokenConfig.isNative) {
+      // Native XTZ deposit
+      if (!depositNative) {
+        throw new Error('Native deposit function not provided');
+      }
+      await depositNative(amount);
+    } else {
+      // ERC20 token deposit
+      if (!approveToken || !deposit) {
+        throw new Error('ERC20 deposit functions not provided');
+      }
+      
+      // Step 1: Approve token spending
+      await approveToken(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
+      
+      // Step 2: Deposit to SmartPay
+      await deposit(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
+    }
     
     return { success: true };
   } catch (error) {

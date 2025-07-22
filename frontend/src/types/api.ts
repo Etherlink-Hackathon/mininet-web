@@ -97,11 +97,11 @@ export interface WalletBalance {
   USDC: number;
 }
 
-// Enhanced balance interface for FastPay integration
+// Enhanced balance interface for SmartPay integration
 export interface EnhancedWalletBalance {
   USDT: {
     wallet: number;      // Regular wallet balance
-    fastpay: number;     // FastPay system balance  
+    fastpay: number;     // SmartPay system balance  
     total: number;       // Combined balance
   };
   USDC: {
@@ -111,8 +111,8 @@ export interface EnhancedWalletBalance {
   };
 }
 
-// FastPay account registration status
-export interface FastPayAccountStatus {
+// SmartPay account registration status
+export interface SmartPayAccountStatus {
   registered: boolean;
   registrationTime?: number;
   lastRedeemedSequence?: number;
@@ -120,7 +120,7 @@ export interface FastPayAccountStatus {
 
 // Deposit transaction data
 export interface DepositTransaction {
-  token: 'USDT' | 'USDC';
+  token: 'XTZ' | 'USDT' | 'USDC';
   amount: string;
   status: 'pending' | 'confirming' | 'completed' | 'failed';
   transactionHash?: string;

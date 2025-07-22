@@ -1,111 +1,150 @@
-"""Minimal FastAPI backend that proxies requests to FastPay mesh authorities.
+"""FastAPI backend for mininet-web SmartPay system.
 
-This file depends **only** on `app.services.mesh_client` to communicate with the
-Mininet-WiFi gateway bridge.  Keeping everything here ultra-lightweight helps us
-reason about the full flow:
-
-Frontend  →  /api  →  simple_backend.py  →  MeshClient  →  HTTP Gateway  →  Authority
+This application provides a clean REST API for interacting with:
+- SmartPay mesh networks via gateway bridge
+- Smart contract operations on Etherlink blockchain
+- Wallet management and transaction processing
 """
 
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.services.mesh_client import mesh_client, SUPPORTED_TOKENS
+from app.core.config import settings
+from app.api.router import api_router
+from app.services.mesh_client import mesh_client
+from app.services.blockchain_client import blockchain_client
 
 # ---------------------------------------------------------------------------
-# FastAPI setup
+# FastAPI application setup
 # ---------------------------------------------------------------------------
-app = FastAPI(title="Mininet-WiFi FastPay Backend", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, lock this down.
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+app = FastAPI(
+    title="SmartPay Backend",
+    description="Backend API for SmartPay mesh network and blockchain integration",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=settings.allowed_methods,
+    allow_headers=settings.allowed_headers,
+)
 
-# ------------------------------ lifecycle ------------------------------
+# Include the main API router with /api prefix
+app.include_router(api_router, prefix="/api")
+
+# ---------------------------------------------------------------------------
+# Application lifecycle events
+# ---------------------------------------------------------------------------
 
 @app.on_event("startup")
-async def _startup() -> None:  # noqa: D401
+async def startup_event() -> None:
+    """Initialize services on application startup."""
+    # Start mesh client
     await mesh_client.start()
-
+    
+    # Initialize blockchain client (already initialized in constructor)
+    # No async initialization needed for blockchain client
 
 @app.on_event("shutdown")
-async def _shutdown() -> None:  # noqa: D401
+async def shutdown_event() -> None:
+    """Cleanup services on application shutdown."""
     await mesh_client.close()
 
-
-# ------------------------------ routes --------------------------------
-
-
-@app.get("/health")
-async def health() -> Dict[str, Any]:
-    return {
-        "status": "ok",
-        "timestamp": time.time(),
-        "gateway": mesh_client.gateway_url,
-        "supported_tokens": SUPPORTED_TOKENS,
-    }
-
-
-@app.get("/shards")
-async def list_shards(refresh: bool = Query(False)) -> List[Dict[str, Any]]:
-    return await mesh_client.get_shards(force=refresh)
-
-
-@app.get("/authorities")
-async def list_authorities(refresh: bool = Query(False)) -> List[Dict[str, Any]]:
-    return await mesh_client.discover(force=refresh)
-
-
-@app.get("/authorities/{name}")
-async def get_authority(name: str) -> Dict[str, Any]:
-    authorities = await mesh_client.discover()
-    for auth in authorities:
-        if auth["name"] == name:
-            return auth
-    raise HTTPException(status_code=404, detail="Authority not found")
-
-
-@app.post("/transfer")
-async def transfer(authority: str = Query(...), body: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    if body is None:
-        raise HTTPException(status_code=400, detail="Missing JSON body")
-    if body.get("token") not in SUPPORTED_TOKENS:
-        raise HTTPException(status_code=400, detail="Unsupported token")
-    return await mesh_client.send_transfer(authority, body)
-
-
-@app.post("/confirmation")
-async def confirmation(authority: str = Query(...), body: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    if body is None:
-        raise HTTPException(status_code=400, detail="Missing JSON body")
-    return await mesh_client.send_confirmation(authority, body)
-
-
-@app.post("/ping/{name}")
-async def ping(name: str) -> Dict[str, Any]:
-    return await mesh_client.ping(name)
-
-
-@app.post("/ping-all")
-async def ping_all() -> Dict[str, Any]:
-    return await mesh_client.ping_all()
-
+# ---------------------------------------------------------------------------
+# Root endpoints (non-API)
+# ---------------------------------------------------------------------------
 
 @app.get("/")
 async def root() -> Dict[str, Any]:
+    """Root endpoint with API information."""
     return {
-        "docs": "/docs",
-        "authorities": "/authorities",
-        "transfer": "/transfer?authority={name}",
-        "confirmation": "/confirmation?authority={name}",
+        "name": "SmartPay Backend",
+        "version": "1.0.0",
+        "status": "running",
+        "timestamp": time.time(),
+        "api": {
+            "docs": "/docs",
+            "redoc": "/redoc",
+            "openapi": "/openapi.json"
+        },
+        "endpoints": {
+            "authorities": "/api/authorities",
+            "mesh": "/api/mesh",
+            "wallet": "/api/wallet",
+            "shards": "/api/shards",
+            "transactions": "/api/transactions",
+            "websocket": "/api/ws"
+        }
+    }
+
+@app.get("/health")
+async def health_check() -> Dict[str, Any]:
+    """System health check endpoint."""
+    # Check mesh client status
+    mesh_status = "ok"
+    try:
+        await mesh_client.discover()
+    except Exception:
+        mesh_status = "error"
+    
+    # Check blockchain client status
+    blockchain_health = await blockchain_client.health_check()
+    
+    return {
+        "status": "ok",
+        "timestamp": time.time(),
+        "services": {
+            "mesh_client": {
+                "status": mesh_status,
+                "gateway_url": mesh_client.gateway_url,
+            },
+            "blockchain_client": {
+                "status": "ok" if blockchain_health['connected'] else "error",
+                "chain_id": blockchain_health.get('chain_id'),
+                "fastpay_contract": blockchain_health['fastpay_contract'],
+            }
+        },
+        "config": {
+            "environment": settings.environment,
+            "debug": settings.debug,
+            "api_prefix": "/api"
+        }
+    }
+
+@app.get("/info")
+async def system_info() -> Dict[str, Any]:
+    """System information and configuration."""
+    return {
+        "application": {
+            "name": "SmartPay Backend",
+            "version": "1.0.0",
+            "environment": settings.environment,
+            "debug": settings.debug,
+        },
+        "mesh_network": {
+            "gateway_url": settings.mesh_gateway_url,
+            "discovery_enabled": settings.mesh_discovery_enabled,
+            "authority_port": settings.mesh_authority_port,
+        },
+        "blockchain": {
+            "rpc_url": settings.rpc_url,
+            "chain_id": settings.chain_id,
+            "chain_name": settings.chain_name,
+            "fastpay_contract": settings.fastpay_contract_address,
+        },
+        "api": {
+            "prefix": "/api",
+            "cors_origins": settings.allowed_origins,
+            "websocket_enabled": settings.ws_enable,
+        }
     } 

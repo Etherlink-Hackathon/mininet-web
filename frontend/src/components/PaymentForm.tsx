@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import {
+  Box,
   Paper,
   Typography,
   TextField,
   Button,
-  Box,
   FormControl,
   InputLabel,
   Select,
@@ -14,11 +14,20 @@ import {
   InputAdornment,
 } from '@mui/material';
 import { Send as SendIcon, AccountBalanceWallet } from '@mui/icons-material';
-import { PaymentFormData } from '../types/api';
+import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
+
+// Define payment form data structure
+export interface PaymentFormData {
+  recipient: string;
+  amount: number;
+  token: TokenSymbol;
+}
 
 interface PaymentFormProps {
   onSubmit: (data: PaymentFormData) => Promise<void>;
-  balance: { USDT: number; USDC: number };
+  balance: {
+    [K in TokenSymbol]: number;
+  };
   loading?: boolean;
 }
 
@@ -26,7 +35,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
   const [formData, setFormData] = useState<PaymentFormData>({
     recipient: '',
     amount: 0,
-    token: 'USDT',
+    token: 'XTZ',
   });
   const [error, setError] = useState<string>('');
 
@@ -46,7 +55,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
     }
 
     if (formData.amount > balance[formData.token]) {
-      setError(`Insufficient ${formData.token} balance`);
+      setError(`Insufficient ${SUPPORTED_TOKENS[formData.token].symbol} balance`);
       return;
     }
 
@@ -56,7 +65,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
       setFormData({
         recipient: '',
         amount: 0,
-        token: 'USDT',
+        token: 'XTZ',
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Transaction failed');
@@ -121,13 +130,16 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
             Your Balance
           </Typography>
         </Box>
-        <Box display="flex" gap={3}>
-          <Typography variant="h6" color="text.primary">
-            {balance.USDT.toFixed(2)} USDT
-          </Typography>
-          <Typography variant="h6" color="text.primary">
-            {balance.USDC.toFixed(2)} USDC
-          </Typography>
+        <Box display="flex" gap={3} flexWrap="wrap">
+          {Object.entries(balance).map(([tokenSymbol, tokenBalance]) => {
+            const tokenKey = tokenSymbol as TokenSymbol;
+            const tokenConfig = SUPPORTED_TOKENS[tokenKey];
+            return (
+              <Typography key={tokenSymbol} variant="h6" color="text.primary">
+                {tokenBalance.toFixed(2)} {tokenConfig.symbol}
+              </Typography>
+            );
+          })}
         </Box>
       </Box>
 
@@ -140,9 +152,25 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
           value={formData.token}
           label="Token"
           onChange={handleSelectChange('token')}
+          disabled={loading}
         >
-          <MenuItem value="USDT">USDT</MenuItem>
-          <MenuItem value="USDC">USDC</MenuItem>
+          {Object.keys(SUPPORTED_TOKENS).map((tokenSymbol) => {
+            const tokenKey = tokenSymbol as TokenSymbol;
+            const tokenConfig = SUPPORTED_TOKENS[tokenKey];
+            return (
+              <MenuItem key={tokenSymbol} value={tokenSymbol}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <img 
+                    src={tokenConfig.icon} 
+                    alt={tokenConfig.symbol} 
+                    width={20} 
+                    height={20} 
+                  />
+                  {tokenConfig.symbol} - {tokenConfig.name}
+                </Box>
+              </MenuItem>
+            );
+          })}
         </Select>
       </FormControl>
 
@@ -169,7 +197,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
-              {formData.token}
+              {SUPPORTED_TOKENS[formData.token].symbol}
             </InputAdornment>
           ),
         }}
@@ -178,7 +206,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
           step: 0.01,
           max: balance[formData.token],
         }}
-        helperText={`Available: ${balance[formData.token].toFixed(2)} ${formData.token}`}
+        helperText={`Available: ${balance[formData.token].toFixed(2)} ${SUPPORTED_TOKENS[formData.token].symbol}`}
       />
 
       {/* Submit Button */}
@@ -198,7 +226,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
           },
         }}
       >
-        {loading ? 'Processing...' : `Send ${formData.amount} ${formData.token}`}
+        {loading ? 'Processing...' : `Send ${formData.amount} ${SUPPORTED_TOKENS[formData.token].symbol}`}
       </Button>
 
       <Typography 
@@ -208,7 +236,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
         textAlign="center" 
         mt={2}
       >
-        Transactions are verified by local authorities in the FastPay network
+        Transactions are verified by local authorities in the SmartPay network
       </Typography>
     </Paper>
   );

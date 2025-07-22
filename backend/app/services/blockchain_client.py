@@ -1,0 +1,422 @@
+"""
+Blockchain client for interacting with SmartPay smart contracts on Etherlink.
+"""
+import asyncio
+import logging
+from typing import Dict, List, Optional, Any, Union
+from decimal import Decimal
+from dataclasses import dataclass
+
+# Make web3 imports optional
+try:
+    from web3 import Web3
+    from web3.middleware import geth_poa_middleware
+    from eth_account import Account
+    WEB3_AVAILABLE = True
+except ImportError:
+    WEB3_AVAILABLE = False
+    # Provide mock classes for type hints
+    class Web3:
+        pass
+    class Account:
+        pass
+
+from ..core.config import settings, SUPPORTED_TOKENS
+
+logger = logging.getLogger(__name__)
+
+# SmartPay contract ABI (essential functions)
+FASTPAY_ABI = [
+    # Account Management
+    {
+        "inputs": [],
+        "name": "registerAccount",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "account", "type": "address"}],
+        "name": "isAccountRegistered",
+        "outputs": [{"name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "account", "type": "address"}],
+        "name": "getAccountInfo",
+        "outputs": [
+            {"name": "registered", "type": "bool"},
+            {"name": "registrationTime", "type": "uint256"},
+            {"name": "lastRedeemedSequence", "type": "uint256"}
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # Balance Management
+    {
+        "inputs": [
+            {"name": "account", "type": "address"},
+            {"name": "token", "type": "address"}
+        ],
+        "name": "getAccountBalance",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"name": "token", "type": "address"}],
+        "name": "totalBalance",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "totalAccounts",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # Constants
+    {
+        "inputs": [],
+        "name": "NATIVE_TOKEN",
+        "outputs": [{"name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    # Events
+    {
+        "anonymous": False,
+        "inputs": [
+            {"indexed": True, "name": "account", "type": "address"},
+            {"indexed": False, "name": "timestamp", "type": "uint256"}
+        ],
+        "name": "AccountRegistered",
+        "type": "event"
+    },
+    {
+        "anonymous": False,
+        "inputs": [
+            {"indexed": True, "name": "sender", "type": "address"},
+            {"indexed": True, "name": "token", "type": "address"},
+            {"indexed": False, "name": "amount", "type": "uint256"},
+            {"indexed": False, "name": "transactionIndex", "type": "uint256"}
+        ],
+        "name": "FundingCompleted",
+        "type": "event"
+    }
+]
+
+# ERC20 ABI (essential functions)
+ERC20_ABI = [
+    {
+        "inputs": [{"name": "account", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{"name": "", "type": "uint8"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [{"name": "", "type": "string"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "name",
+        "outputs": [{"name": "", "type": "string"}],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
+
+@dataclass
+class AccountInfo:
+    """Account information from smart contract."""
+    address: str
+    is_registered: bool
+    registration_time: int
+    last_redeemed_sequence: int
+
+@dataclass
+class TokenBalance:
+    """Token balance information."""
+    token_symbol: str
+    token_address: str
+    wallet_balance: str  # In human-readable format
+    fastpay_balance: str  # In human-readable format
+    total_balance: str
+    decimals: int
+
+@dataclass
+class ContractStats:
+    """Overall contract statistics."""
+    total_accounts: int
+    total_native_balance: str
+    total_token_balances: Dict[str, str]
+
+class BlockchainClient:
+    """Client for interacting with Etherlink blockchain and SmartPay contracts."""
+    
+    def __init__(self):
+        """Initialize blockchain client with Web3 connection."""
+        self.w3: Optional[Web3] = None
+        self.fastpay_contract = None
+        self.account = None
+        if WEB3_AVAILABLE:
+            self._initialize_connection()
+        else:
+            logger.warning("Web3 dependencies not available. Blockchain features disabled.")
+    
+    def _initialize_connection(self) -> None:
+        """Initialize Web3 connection to Etherlink."""
+        if not WEB3_AVAILABLE:
+            logger.error("Cannot initialize connection: web3 dependencies not installed")
+            return
+            
+        try:
+            # Connect to Etherlink RPC
+            self.w3 = Web3(Web3.HTTPProvider(settings.rpc_url))
+            
+            # Add PoA middleware for Etherlink
+            self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+            
+            # Verify connection
+            if not self.w3.is_connected():
+                raise ConnectionError(f"Failed to connect to {settings.rpc_url}")
+            
+            logger.info(f"Connected to blockchain: {settings.chain_name} (Chain ID: {settings.chain_id})")
+            
+            # Initialize SmartPay contract if address is configured
+            if settings.fastpay_contract_address:
+                self.fastpay_contract = self.w3.eth.contract(
+                    address=Web3.to_checksum_address(settings.fastpay_contract_address),
+                    abi=FASTPAY_ABI
+                )
+                logger.info(f"SmartPay contract initialized at {settings.fastpay_contract_address}")
+            
+            # Initialize backend account if private key is provided
+            if settings.backend_private_key:
+                self.account = Account.from_key(settings.backend_private_key)
+                logger.info(f"Backend account initialized: {self.account.address}")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize blockchain connection: {e}")
+            self.w3 = None
+    
+    async def get_account_info(self, address: str) -> Optional[AccountInfo]:
+        """Get account information from SmartPay contract."""
+        if not self.fastpay_contract:
+            logger.error("SmartPay contract not initialized")
+            return None
+        
+        try:
+            address = Web3.to_checksum_address(address)
+            
+            # Get account info from contract
+            account_data = self.fastpay_contract.functions.getAccountInfo(address).call()
+            
+            return AccountInfo(
+                address=address,
+                is_registered=account_data[0],
+                registration_time=account_data[1],
+                last_redeemed_sequence=account_data[2]
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to get account info for {address}: {e}")
+            return None
+    
+    async def get_account_balances(self, address: str) -> List[TokenBalance]:
+        """Get all token balances for an account."""
+        if not self.w3 or not self.fastpay_contract:
+            logger.error("Blockchain client not properly initialized")
+            return []
+        
+        balances = []
+        address = Web3.to_checksum_address(address)
+        
+        for token_symbol, token_config in SUPPORTED_TOKENS.items():
+            try:
+                token_address = Web3.to_checksum_address(token_config['address'])
+                decimals = token_config['decimals']
+                
+                # Get wallet balance
+                if token_config['is_native']:
+                    # Native XTZ balance
+                    wallet_balance_wei = self.w3.eth.get_balance(address)
+                else:
+                    # ERC20 token balance
+                    token_contract = self.w3.eth.contract(
+                        address=token_address,
+                        abi=ERC20_ABI
+                    )
+                    wallet_balance_wei = token_contract.functions.balanceOf(address).call()
+                
+                # Get SmartPay balance
+                fastpay_balance_wei = self.fastpay_contract.functions.getAccountBalance(
+                    address, token_address
+                ).call()
+                
+                # Convert to human-readable format
+                wallet_balance = self._wei_to_human(wallet_balance_wei, decimals)
+                fastpay_balance = self._wei_to_human(fastpay_balance_wei, decimals)
+                total_balance = str(Decimal(wallet_balance) + Decimal(fastpay_balance))
+                
+                balances.append(TokenBalance(
+                    token_symbol=token_symbol,
+                    token_address=token_address,
+                    wallet_balance=wallet_balance,
+                    fastpay_balance=fastpay_balance,
+                    total_balance=total_balance,
+                    decimals=decimals
+                ))
+                
+            except Exception as e:
+                logger.error(f"Failed to get {token_symbol} balance for {address}: {e}")
+                # Add zero balance as fallback
+                balances.append(TokenBalance(
+                    token_symbol=token_symbol,
+                    token_address=token_config['address'],
+                    wallet_balance="0",
+                    fastpay_balance="0",
+                    total_balance="0",
+                    decimals=token_config['decimals']
+                ))
+        
+        return balances
+    
+    async def get_contract_stats(self) -> Optional[ContractStats]:
+        """Get overall contract statistics."""
+        if not self.fastpay_contract:
+            logger.error("SmartPay contract not initialized")
+            return None
+        
+        try:
+            # Get total accounts
+            total_accounts = self.fastpay_contract.functions.totalAccounts().call()
+            
+            # Get total balances for each token
+            total_token_balances = {}
+            total_native_balance = "0"
+            
+            for token_symbol, token_config in SUPPORTED_TOKENS.items():
+                token_address = Web3.to_checksum_address(token_config['address'])
+                total_balance_wei = self.fastpay_contract.functions.totalBalance(token_address).call()
+                total_balance = self._wei_to_human(total_balance_wei, token_config['decimals'])
+                
+                if token_config['is_native']:
+                    total_native_balance = total_balance
+                else:
+                    total_token_balances[token_symbol] = total_balance
+            
+            return ContractStats(
+                total_accounts=total_accounts,
+                total_native_balance=total_native_balance,
+                total_token_balances=total_token_balances
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to get contract stats: {e}")
+            return None
+    
+    async def is_account_registered(self, address: str) -> bool:
+        """Check if an account is registered with SmartPay."""
+        if not self.fastpay_contract:
+            return False
+        
+        try:
+            address = Web3.to_checksum_address(address)
+            return self.fastpay_contract.functions.isAccountRegistered(address).call()
+        except Exception as e:
+            logger.error(f"Failed to check registration for {address}: {e}")
+            return False
+    
+    async def get_recent_events(self, event_name: str, from_block: int = None, limit: int = 100) -> List[Dict]:
+        """Get recent contract events."""
+        if not self.fastpay_contract:
+            return []
+        
+        try:
+            if from_block is None:
+                # Get events from last 1000 blocks
+                latest_block = self.w3.eth.block_number
+                from_block = max(0, latest_block - 1000)
+            
+            event_filter = getattr(self.fastpay_contract.events, event_name).create_filter(
+                fromBlock=from_block,
+                toBlock='latest'
+            )
+            
+            events = event_filter.get_all_entries()
+            
+            # Convert events to dict format
+            event_list = []
+            for event in events[-limit:]:  # Get latest events up to limit
+                event_data = {
+                    'event': event.event,
+                    'block_number': event.blockNumber,
+                    'transaction_hash': event.transactionHash.hex(),
+                    'args': dict(event.args)
+                }
+                event_list.append(event_data)
+            
+            return event_list
+            
+        except Exception as e:
+            logger.error(f"Failed to get {event_name} events: {e}")
+            return []
+    
+    def _wei_to_human(self, wei_amount: int, decimals: int) -> str:
+        """Convert wei amount to human-readable format."""
+        return str(Decimal(wei_amount) / Decimal(10 ** decimals))
+    
+    def _human_to_wei(self, human_amount: Union[str, Decimal], decimals: int) -> int:
+        """Convert human-readable amount to wei."""
+        return int(Decimal(human_amount) * Decimal(10 ** decimals))
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Check blockchain connection health."""
+        health_status = {
+            'connected': False,
+            'chain_id': None,
+            'latest_block': None,
+            'fastpay_contract': False,
+            'error': None
+        }
+        
+        if not WEB3_AVAILABLE:
+            health_status['error'] = 'Web3 dependencies not available'
+            return health_status
+        
+        try:
+            if self.w3 and self.w3.is_connected():
+                health_status['connected'] = True
+                health_status['chain_id'] = self.w3.eth.chain_id
+                health_status['latest_block'] = self.w3.eth.block_number
+                
+                if self.fastpay_contract:
+                    # Test contract call
+                    total_accounts = self.fastpay_contract.functions.totalAccounts().call()
+                    health_status['fastpay_contract'] = True
+                    health_status['total_accounts'] = total_accounts
+                    
+        except Exception as e:
+            health_status['error'] = str(e)
+            logger.error(f"Blockchain health check failed: {e}")
+        
+        return health_status
+
+# Global blockchain client instance
+blockchain_client = BlockchainClient() 

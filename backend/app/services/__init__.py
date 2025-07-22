@@ -1,5 +1,6 @@
 """Services package for the Etherlink Offline Payment API."""
 from .mesh_client import mesh_client, MeshClient, get_mesh_client, MeshClientError, SUPPORTED_TOKENS  # noqa: F401
+from .blockchain_client import blockchain_client, BlockchainClient  # noqa: F401
 
 __all__ = [
     "MeshClient",
@@ -7,4 +8,6 @@ __all__ = [
     "get_mesh_client",
     "MeshClientError",
     "SUPPORTED_TOKENS",
+    "BlockchainClient",
+    "blockchain_client",
 ] 

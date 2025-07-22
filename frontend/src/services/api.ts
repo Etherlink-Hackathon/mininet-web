@@ -47,17 +47,17 @@ class ApiService {
   }
 
   async getShards(): Promise<ShardInfo[]> {
-    const { data } = await this.client.get<ShardInfo[]>('/shards');
+    const { data } = await this.client.get<ShardInfo[]>('/api/shards');
     return data;
   }
 
   async getAuthorities(): Promise<AuthorityInfo[]> {
-    const { data } = await this.client.get<AuthorityInfo[]>('/authorities');
+    const { data } = await this.client.get<AuthorityInfo[]>('/api/authorities');
     return data;
   }
 
   async getAuthority(name: string): Promise<AuthorityInfo> {
-    const { data } = await this.client.get<AuthorityInfo>(`/authorities/${name}`);
+    const { data } = await this.client.get<AuthorityInfo>(`/api/authorities/${name}`);
     return data;
   }
 
@@ -66,19 +66,19 @@ class ApiService {
    * Backend signature: POST /transfer?authority=NAME
    */
   async createTransfer(authority: string, payload: PaymentFormData): Promise<any> {
-    const { data } = await this.client.post('/transfer', payload, {
+    const { data } = await this.client.post('/api/transfer', payload, {
       params: { authority },
     });
     return data;
   }
 
   async pingAuthority(name: string): Promise<any> {
-    const { data } = await this.client.post(`/ping/${name}`);
+    const { data } = await this.client.post(`/api/ping/${name}`);
     return data;
   }
 
   async getHealth(): Promise<any> {
-    const { data } = await this.client.get('/health');
+    const { data } = await this.client.get('/api/health');
     return data;
   }
 
