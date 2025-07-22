@@ -182,7 +182,7 @@ class BlockchainClient:
                                     abi=ERC20ABI
                                 )
                                 wallet_balance_wei = token_contract.functions.balanceOf(address).call()
-                                wallet_balance = self._wei_to_human(wallet_balance_wei, decimals)
+                                wallet_balance = self._wei_to_human(wallet_balance_wei, 0)
                                 logger.info(f"Successfully got {token_symbol} wallet balance: {wallet_balance}")
                             else:
                                 logger.warning(f"{token_symbol} contract not deployed at {token_address}")

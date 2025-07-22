@@ -1,6 +1,7 @@
 import { type Address } from 'viem';
 import { MeshPayMVP } from '../abis/MeshPayMVP';
 import { MeshPayAuthorities } from '../abis/MeshPayAuthorities';
+import { ERC20 } from '../abis/ERC20';
 // Native token address (used for XTZ)
 export const NATIVE_TOKEN = '0x0000000000000000000000000000000000000000' as Address;
 
@@ -17,19 +18,10 @@ export const FASTPAY_AUTHORITY_CONTRACT = {
 } as const;
 
 // ERC20 Token ABI
-export const ERC20_ABI = [
-  'function name() external view returns (string)',
-  'function symbol() external view returns (string)',
-  'function decimals() external view returns (uint8)',
-  'function totalSupply() external view returns (uint256)',
-  'function balanceOf(address account) external view returns (uint256)',
-  'function transfer(address to, uint256 amount) external returns (bool)',
-  'function allowance(address owner, address spender) external view returns (uint256)',
-  'function approve(address spender, uint256 amount) external returns (bool)',
-  'function transferFrom(address from, address to, uint256 amount) external returns (bool)',
-  'event Transfer(address indexed from, address indexed to, uint256 value)',
-  'event Approval(address indexed owner, address indexed spender, uint256 value)',
-] as const;
+export const ERC20_CONTRACT = {
+  address: (import.meta.env.VITE_ERC20_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
+  abi: ERC20.abi,
+} as const;
 
 // Supported tokens configuration for MeshPay
 export const SUPPORTED_TOKENS = {

@@ -10,7 +10,7 @@ import { parseUnits, formatUnits, type Address } from 'viem';
 import { 
   SMARTPAY_CONTRACT, 
   SUPPORTED_TOKENS, 
-  ERC20_ABI, 
+  ERC20_CONTRACT, 
   NATIVE_TOKEN, 
   getContractAddresses,
   type SupportedToken 
@@ -180,7 +180,7 @@ export function useTokenAllowance(tokenSymbol: Exclude<TokenSymbol, 'XTZ'>) {
 
   return useReadContract({
     address: tokenConfig.address,
-    abi: ERC20_ABI,
+    abi: ERC20_CONTRACT.abi,
     functionName: 'allowance',
     args: address && contractAddresses?.meshpay ? [address, contractAddresses.meshpay] : undefined,
     query: {
@@ -218,7 +218,7 @@ export function useApproveToken() {
       
       await writeContract({
         address: tokenConfig.address,
-        abi: ERC20_ABI,
+        abi: ERC20_CONTRACT.abi,
         functionName: 'approve',
         args: [contractAddresses.meshpay, parsedAmount],
       });

@@ -76,7 +76,21 @@ const Wallet: React.FC = () => {
 
 
   const formatBalance = (balance: string): string => {
-    return parseFloat(balance).toFixed(6);
+    const num = Number(balance);
+    if (Number.isNaN(num)) return '0';
+
+    // Decide precision dynamically:
+    //  • >= 1      → 2 decimal places
+    //  • 0.01–1   → 4 decimal places
+    //  • < 0.01   → 6 decimal places (max)
+    let maxFraction = 2;
+    if (Math.abs(num) < 1) maxFraction = 4;
+    if (Math.abs(num) < 0.01) maxFraction = 6;
+
+    return num.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: maxFraction,
+    });
   };
 
   const getStatusChip = (status: string) => {
@@ -167,7 +181,7 @@ const Wallet: React.FC = () => {
       )}
 
       <Grid container spacing={3} mb={4}>
-        {balances && Object.entries(balances).map(([symbol, balance]) => {
+        {balances && Object.entries(balances).map(([symbol, balance]: [string, any]) => {
           const tokenKey = symbol as TokenSymbol;
           const config = SUPPORTED_TOKENS[tokenKey];
           return (

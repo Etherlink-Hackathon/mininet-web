@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, type Address } from 'viem';
-import { SMARTPAY_CONTRACT, SUPPORTED_TOKENS, ERC20_ABI, type TokenSymbol } from '../config/contracts';
+import { SMARTPAY_CONTRACT, SUPPORTED_TOKENS, ERC20_CONTRACT, type TokenSymbol } from '../config/contracts';
 import { MeshPayBalance } from '../services/meshpay';
 
 // --- API Response Types (from backend) ---
@@ -208,7 +208,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       } else {
         writeApproval({
           address: tokenConfig.address,
-          abi: ERC20_ABI,
+          abi: ERC20_CONTRACT.abi,
           functionName: 'approve',
           args: [SMARTPAY_CONTRACT.address, amountWei],
         });

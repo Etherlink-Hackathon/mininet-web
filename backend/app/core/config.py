@@ -139,21 +139,21 @@ SUPPORTED_TOKENS = {
         'is_native': True,
     },
     'WTZ': {
-        'address': settings.wtz_contract_address,  # None if not configured
+        'address': settings.wtz_contract_address,  
         'decimals': 18,
         'symbol': 'WTZ',
         'name': 'Wrapped Tezos',
         'is_native': False,
     },
     'USDT': {
-        'address': settings.usdt_contract_address,  # None if not configured
+        'address': settings.usdt_contract_address,  
         'decimals': 6,
         'symbol': 'USDT',
         'name': 'Tether USD',
         'is_native': False,
     },
     'USDC': {
-        'address': settings.usdc_contract_address,  # None if not configured
+        'address': settings.usdc_contract_address, 
         'decimals': 6,
         'symbol': 'USDC',
         'name': 'USD Coin',

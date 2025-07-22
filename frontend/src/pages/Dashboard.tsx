@@ -54,6 +54,7 @@ const Dashboard: React.FC = () => {
     if (isConnected && address) {
       fetchData();
     }
+    console.log(isConnected, address, balances);
   }, [isConnected, address]);
 
   const [stats, setStats] = useState<DashboardStats>({
@@ -148,8 +149,8 @@ const Dashboard: React.FC = () => {
       {isConnected && balances && (
         <Grid container spacing={3} mb={4}>
           {Object.entries(balances)
-            .filter(([, bal]) => parseFloat(bal.meshpay) > 0)
-            .map(([symbol, balanceData]) => {
+            .filter(([, bal]: [string, any]) => parseFloat(bal.meshpay) > 0)
+            .map(([symbol, balanceData]: [string, any]) => {
               const tokenKey = symbol as TokenSymbol;
               const tokenCfg = SUPPORTED_TOKENS[tokenKey];
               return (
