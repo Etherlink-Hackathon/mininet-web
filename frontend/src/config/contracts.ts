@@ -6,8 +6,8 @@ import { ERC20 } from '../abis/ERC20';
 export const NATIVE_TOKEN = '0x0000000000000000000000000000000000000000' as Address;
 
 // MeshPay MVP Contract Configuration
-export const SMARTPAY_CONTRACT = {
-  address: (import.meta.env.VITE_SMARTPAY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
+export const MESHPAY_CONTRACT = {
+  address: (import.meta.env.VITE_MESHPAY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
   abi: MeshPayMVP.abi,
 } as const;
 
@@ -92,18 +92,17 @@ export const ETHERLINK_CHAIN_CONFIG = {
 
 // Contract addresses by chain ID
 export const CONTRACT_ADDRESSES = {
-  [ETHERLINK_CHAIN_CONFIG.id]: {
-    meshpay: SMARTPAY_CONTRACT.address,
+    meshpay: MESHPAY_CONTRACT.address,
+    erc20: ERC20_CONTRACT.address,
     authority: FASTPAY_AUTHORITY_CONTRACT.address,
     tokens: {
       USDT: SUPPORTED_TOKENS.USDT.address,
       USDC: SUPPORTED_TOKENS.USDC.address,
       WTZ: SUPPORTED_TOKENS.WTZ.address,
     },
-  },
-} as const;
+}as const;
 
 // Helper function to get contract addresses for current chain
-export function getContractAddresses(chainId: number) {
-  return CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES];
+export function getContractAddresses() {
+  return CONTRACT_ADDRESSES
 } 

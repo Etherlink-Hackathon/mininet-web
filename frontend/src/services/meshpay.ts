@@ -1,20 +1,21 @@
-import { 
-  useReadContract, 
-  useWriteContract, 
-  useWaitForTransactionReceipt, 
+import {
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
   useAccount,
   useChainId,
-  useBalance
+  useBalance,
 } from 'wagmi';
 import { parseUnits, formatUnits, type Address } from 'viem';
-import { 
-  SMARTPAY_CONTRACT, 
-  SUPPORTED_TOKENS, 
-  ERC20_CONTRACT, 
-  NATIVE_TOKEN, 
+import {
+  MESHPAY_CONTRACT,
+  SUPPORTED_TOKENS,
+  ERC20_CONTRACT,
+  NATIVE_TOKEN,
   getContractAddresses,
-  type SupportedToken 
+  type SupportedToken
 } from '../config/contracts';
+
 
 // Types for MeshPay operations
 export interface TokenBalance {
@@ -54,12 +55,13 @@ function formatBalance(value: bigint, decimals: number): string {
  */
 export function useIsAccountRegistered() {
   const { address } = useAccount();
-  const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
+  // const chainId = useChainId();
+
+  const contractAddresses = getContractAddresses();
 
   return useReadContract({
-    address: contractAddresses?.meshpay || SMARTPAY_CONTRACT.address,
-    abi: SMARTPAY_CONTRACT.abi,
+    address: contractAddresses?.meshpay || MESHPAY_CONTRACT.address,
+    abi: MESHPAY_CONTRACT.abi,
     functionName: 'isAccountRegistered',
     args: address ? [address] : undefined,
     query: {
@@ -74,11 +76,11 @@ export function useIsAccountRegistered() {
 export function useAccountInfo() {
   const { address } = useAccount();
   const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
+  const contractAddresses = getContractAddresses();
 
   return useReadContract({
-    address: contractAddresses?.meshpay || SMARTPAY_CONTRACT.address,
-    abi: SMARTPAY_CONTRACT.abi,
+    address: contractAddresses?.meshpay || MESHPAY_CONTRACT.address,
+    abi: MESHPAY_CONTRACT.abi,
     functionName: 'getAccountInfo',
     args: address ? [address] : undefined,
     query: {
@@ -92,18 +94,18 @@ export function useAccountInfo() {
  */
 export function useRegisterAccount() {
   const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
-  
+  const contractAddresses = getContractAddresses();
+
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  
+
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
 
   const registerAccount = async () => {
     await writeContract({
-      address: contractAddresses?.meshpay || SMARTPAY_CONTRACT.address,
-      abi: SMARTPAY_CONTRACT.abi,
+      address: contractAddresses?.meshpay || MESHPAY_CONTRACT.address,
+      abi: MESHPAY_CONTRACT.abi,
       functionName: 'registerAccount',
     });
   };
@@ -124,13 +126,13 @@ export function useRegisterAccount() {
 export function useMeshPayBalance(tokenSymbol: TokenSymbol) {
   const { address } = useAccount();
   const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
+  const contractAddresses = getContractAddresses();
   const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
   const tokenAddress = tokenConfig.isNative ? NATIVE_TOKEN : tokenConfig.address;
 
   return useReadContract({
-    address: contractAddresses?.meshpay || SMARTPAY_CONTRACT.address,
-    abi: SMARTPAY_CONTRACT.abi,
+    address: contractAddresses?.meshpay || MESHPAY_CONTRACT.address,
+    abi: MESHPAY_CONTRACT.abi,
     functionName: 'getAccountBalance',
     args: address && tokenAddress ? [address, tokenAddress] : undefined,
     query: {
@@ -145,7 +147,7 @@ export function useMeshPayBalance(tokenSymbol: TokenSymbol) {
 export function useTokenBalance(tokenSymbol: TokenSymbol) {
   const { address } = useAccount();
   const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
+  const contractAddresses = getContractAddresses();
   const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
 
   // For native XTZ, use native balance hook
@@ -175,7 +177,7 @@ export function useTokenBalance(tokenSymbol: TokenSymbol) {
 export function useTokenAllowance(tokenSymbol: Exclude<TokenSymbol, 'XTZ'>) {
   const { address } = useAccount();
   const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
+  const contractAddresses = getContractAddresses();
   const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
 
   return useReadContract({
@@ -194,17 +196,18 @@ export function useTokenAllowance(tokenSymbol: Exclude<TokenSymbol, 'XTZ'>) {
  */
 export function useApproveToken() {
   const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
-  
+  const contractAddresses = getContractAddresses();
+  const { address } = useAccount();
+
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  
+
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
 
   const approveToken = async (tokenSymbol: Exclude<TokenSymbol, 'XTZ'>, amount: string) => {
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
-    
+
     if (tokenConfig.isNative) {
       throw new Error('Native tokens do not require approval');
     }
@@ -215,7 +218,7 @@ export function useApproveToken() {
 
     try {
       const parsedAmount = parseUnits(amount, tokenConfig.decimals);
-      
+      console.log(parsedAmount, "parsedAmount")
       await writeContract({
         address: tokenConfig.address,
         abi: ERC20_CONTRACT.abi,
@@ -243,17 +246,17 @@ export function useApproveToken() {
  */
 export function useDepositToMeshPay() {
   const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
-  
+  const contractAddresses = getContractAddresses();
+
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  
+
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
 
   const deposit = async (tokenSymbol: Exclude<TokenSymbol, 'XTZ'>, amount: string) => {
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
-    
+
     if (tokenConfig.isNative) {
       throw new Error('Use depositNativeToMeshPay for XTZ deposits');
     }
@@ -264,10 +267,10 @@ export function useDepositToMeshPay() {
 
     try {
       const parsedAmount = parseUnits(amount, tokenConfig.decimals);
-      
+      console.log(parsedAmount, "parsedAmount")
       await writeContract({
         address: contractAddresses.meshpay,
-        abi: SMARTPAY_CONTRACT.abi,
+        abi: MESHPAY_CONTRACT.abi,
         functionName: 'handleFundingTransaction',
         args: [tokenConfig.address, parsedAmount],
       });
@@ -292,10 +295,10 @@ export function useDepositToMeshPay() {
  */
 export function useDepositNativeToMeshPay() {
   const chainId = useChainId();
-  const contractAddresses = getContractAddresses(chainId);
-  
+  const contractAddresses = getContractAddresses();
+
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  
+
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
@@ -307,10 +310,10 @@ export function useDepositNativeToMeshPay() {
 
     try {
       const parsedAmount = parseUnits(amount, SUPPORTED_TOKENS.XTZ.decimals);
-      
+
       await writeContract({
         address: contractAddresses.meshpay,
-        abi: SMARTPAY_CONTRACT.abi,
+        abi: MESHPAY_CONTRACT.abi,
         functionName: 'handleNativeFundingTransaction',
         value: parsedAmount,
       });
@@ -343,14 +346,14 @@ export function useCombinedBalances(): {
   const { data: wtzWallet, isLoading: wtzWalletLoading } = useTokenBalance('WTZ');
   const { data: usdtWallet, isLoading: usdtWalletLoading } = useTokenBalance('USDT');
   const { data: usdcWallet, isLoading: usdcWalletLoading } = useTokenBalance('USDC');
-  
+
   // MeshPay balances
   const { data: xtzMeshPay, isLoading: xtzMeshPayLoading } = useMeshPayBalance('XTZ');
   const { data: wtzMeshPay, isLoading: wtzMeshPayLoading } = useMeshPayBalance('WTZ');
   const { data: usdtMeshPay, isLoading: usdtMeshPayLoading } = useMeshPayBalance('USDT');
   const { data: usdcMeshPay, isLoading: usdcMeshPayLoading } = useMeshPayBalance('USDC');
 
-  const isLoading = xtzWalletLoading || usdtWalletLoading || usdcWalletLoading || 
+  const isLoading = xtzWalletLoading || usdtWalletLoading || usdcWalletLoading ||
                    xtzMeshPayLoading || usdtMeshPayLoading || usdcMeshPayLoading;
 
   if (isLoading) {
@@ -405,7 +408,7 @@ export async function performDeposit(
 ): Promise<DepositResult> {
   try {
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
-    
+
     if (tokenConfig.isNative) {
       // Native XTZ deposit
       if (!depositNative) {
@@ -420,16 +423,16 @@ export async function performDeposit(
       
       // Step 1: Approve token spending
       await approveToken(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
-      
+
       // Step 2: Deposit to MeshPay
       await deposit(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
     }
-    
+
     return { success: true };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error occurred' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     };
   }
 } 

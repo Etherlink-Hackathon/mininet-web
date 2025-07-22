@@ -1,8 +1,15 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther, type Address } from 'viem';
-import { SMARTPAY_CONTRACT, SUPPORTED_TOKENS, ERC20_CONTRACT, type TokenSymbol } from '../config/contracts';
-import { MeshPayBalance } from '../services/meshpay';
+import { useAccount } from 'wagmi';
+import { useWallets } from '@privy-io/react-auth';
+import { type Address } from 'viem';
+import { MESHPAY_CONTRACT, SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
+import {
+  MeshPayBalance,
+  useApproveToken,
+  useDepositToMeshPay,
+  useDepositNativeToMeshPay,
+  performDeposit,
+} from '../services/meshpay';
 
 // --- API Response Types (from backend) ---
 interface BackendAccountInfo {
@@ -98,7 +105,11 @@ interface WalletProviderProps {
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const { address, isConnected } = useAccount();
-  
+  const { wallets } = useWallets();
+  // Get wallet info
+  const primaryWallet = wallets[0];
+  const walletAddress = primaryWallet?.address;
+
   // --- State for wallet data ---
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
   const [balances, setBalances] = useState<MeshPayBalance | null>(null);
@@ -114,13 +125,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     error: null,
   });
   
-  // Contract write hooks
-  const { writeContract: writeFunding, data: fundingHash, isPending: isFundingPending, error: fundingError } = useWriteContract();
-  const { writeContract: writeApproval, data: approvalHash, isPending: isApprovalPending, error: approvalError } = useWriteContract();
+  // MeshPay-specific hooks (reusable across app)
+  const { approveToken } = useApproveToken();
+  const { deposit: depositErc20 } = useDepositToMeshPay();
+  const { depositNative } = useDepositNativeToMeshPay();
 
-  // Transaction receipt hooks
-  const { isLoading: isApprovalConfirming, isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({ hash: approvalHash });
-  const { isLoading: isFundingConfirming, isSuccess: isFundingSuccess } = useWaitForTransactionReceipt({ hash: fundingHash });
+  // Note: We rely on the status flags returned by these hooks if needed.
 
   // --- Data Fetching and Transformation ---
   const fetchData = async () => {
@@ -180,43 +190,45 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   };
   
   const depositToMeshPay = async (token: TokenSymbol, amount: string): Promise<{ success: boolean; txHash?: string }> => {
-    if (!address) throw new Error('No wallet connected');
+    if (!walletAddress) throw new Error('No wallet connected');
 
     // Ensure MeshPay contract address is configured
-    if (SMARTPAY_CONTRACT.address === '0x0000000000000000000000000000000000000000') {
-      throw new Error('MeshPay contract address is not configured. Please set VITE_SMARTPAY_CONTRACT_ADDRESS in your environment.');
+    if (MESHPAY_CONTRACT.address === '0x0000000000000000000000000000000000000000') {
+      throw new Error('MeshPay contract address is not configured. Please set VITE_MESHPAY_CONTRACT_ADDRESS in your environment.');
     }
-
-    const tokenConfig = SUPPORTED_TOKENS[token];
-    const amountWei = parseEther(amount);
 
     try {
       setDepositStatus({
         isPending: true,
         isConfirming: false,
-        currentStep: tokenConfig.isNative ? 'depositing' : 'approving',
+        currentStep: 'approving',
         error: null,
       });
 
-      if (tokenConfig.isNative) {
-        writeFunding({
-          address: SMARTPAY_CONTRACT.address,
-          abi: SMARTPAY_CONTRACT.abi,
-          functionName: 'handleNativeFundingTransaction',
-          value: amountWei,
-        });
+      const result = await performDeposit(token, amount, approveToken, depositErc20, depositNative);
+
+      if (result.success) {
+        // Trigger data refresh; status updates are handled by hooks internally.
+        fetchData();
       } else {
-        writeApproval({
-          address: tokenConfig.address,
-          abi: ERC20_CONTRACT.abi,
-          functionName: 'approve',
-          args: [SMARTPAY_CONTRACT.address, amountWei],
-        });
+        setDepositStatus(prev => ({
+          ...prev,
+          isPending: false,
+          isConfirming: false,
+          currentStep: 'idle',
+          error: result.error || 'Deposit failed',
+        }));
       }
 
-      return { success: true };
+      return result;
     } catch (err) {
-      setDepositStatus(prev => ({ ...prev, isPending: false, error: err instanceof Error ? err.message : 'Deposit failed' }));
+      setDepositStatus(prev => ({
+        ...prev,
+        isPending: false,
+        isConfirming: false,
+        currentStep: 'idle',
+        error: err instanceof Error ? err.message : 'Deposit failed',
+      }));
       return { success: false };
     }
   };
@@ -227,17 +239,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   };
 
   // Effects for handling transaction states
-  useEffect(() => {
-    if (isApprovalSuccess && depositStatus.currentStep === 'approving') {
-      // Logic for multi-step ERC20 deposit
-    }
-  }, [isApprovalSuccess]);
-  
-  useEffect(() => {
-    if (isFundingSuccess) {
-      fetchData(); // Refresh all data after a successful transaction
-    }
-  }, [isFundingSuccess]);
+  // The hooks imported above provide their own status booleans; you could
+  // additionally watch them here to update depositStatus if desired.
 
   // Refresh data when account changes
   useEffect(() => {
