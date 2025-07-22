@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, type Address } from 'viem';
-import { FASTPAY_CONTRACT, SUPPORTED_TOKENS, ERC20_ABI, type TokenSymbol } from '../config/contracts';
+import { SMARTPAY_CONTRACT, SUPPORTED_TOKENS, ERC20_ABI, type TokenSymbol } from '../config/contracts';
 import { SmartPayBalance } from '../services/fastpay';
 
 // --- API Response Types (from backend) ---
@@ -204,8 +204,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       });
 
       writeRegister({
-        address: FASTPAY_CONTRACT.address,
-        abi: FASTPAY_CONTRACT.abi,
+        address: SMARTPAY_CONTRACT.address,
+        abi: SMARTPAY_CONTRACT.abi,
         functionName: 'registerAccount',
       });
       return { success: true };
@@ -237,8 +237,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (tokenConfig.isNative) {
         // Handle native XTZ funding
         writeFunding({
-          address: FASTPAY_CONTRACT.address,
-          abi: FASTPAY_CONTRACT.abi,
+          address: SMARTPAY_CONTRACT.address,
+          abi: SMARTPAY_CONTRACT.abi,
           functionName: 'handleNativeFundingTransaction',
           value: amountWei,
         });
@@ -248,7 +248,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           address: tokenConfig.address,
           abi: ERC20_ABI,
           functionName: 'approve',
-          args: [FASTPAY_CONTRACT.address, amountWei],
+          args: [SMARTPAY_CONTRACT.address, amountWei],
         });
       }
 

@@ -4,8 +4,8 @@ import { type Address } from 'viem';
 export const NATIVE_TOKEN = '0x0000000000000000000000000000000000000000' as Address;
 
 // SmartPay MVP Contract Configuration
-export const FASTPAY_CONTRACT = {
-  address: (import.meta.env.VITE_FASTPAY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
+export const SMARTPAY_CONTRACT = {
+  address: (import.meta.env.VITE_SMARTPAY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
   abi: [
     // Account Management
     'function registerAccount() external',
@@ -44,7 +44,7 @@ export const FASTPAY_CONTRACT = {
 
 // SmartPay Authority Manager Contract Configuration
 export const FASTPAY_AUTHORITY_CONTRACT = {
-  address: (import.meta.env.VITE_FASTPAY_AUTHORITY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
+  address: (import.meta.env.VITE_SMARTPAY_AUTHORITY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
   abi: [
     // Authority management functions would go here
     'function getAuthorityInfo(address authority) external view returns (string memory name, bool active)',
@@ -129,7 +129,7 @@ export const ETHERLINK_CHAIN_CONFIG = {
 // Contract addresses by chain ID
 export const CONTRACT_ADDRESSES = {
   [ETHERLINK_CHAIN_CONFIG.id]: {
-    fastpay: FASTPAY_CONTRACT.address,
+    fastpay: SMARTPAY_CONTRACT.address,
     authority: FASTPAY_AUTHORITY_CONTRACT.address,
     tokens: {
       USDT: SUPPORTED_TOKENS.USDT.address,

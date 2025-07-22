@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     allowed_headers: List[str] = os.getenv("ALLOWED_HEADERS", ["*"])
     
     # Smart Contract Configuration
-    fastpay_contract_address: Optional[str] = Field(None, alias="FASTPAY_CONTRACT_ADDRESS")
+    fastpay_contract_address: Optional[str] = Field(None, alias="SMARTPAY_CONTRACT_ADDRESS")
     fastpay_authority_contract_address: Optional[str] = Field(None, alias="FASTPAY_AUTHORITY_CONTRACT_ADDRESS")
     usdt_contract_address: Optional[str] = Field(None, alias="USDT_CONTRACT_ADDRESS")
     usdc_contract_address: Optional[str] = Field(None, alias="USDC_CONTRACT_ADDRESS")

@@ -8,7 +8,7 @@ import {
 } from 'wagmi';
 import { parseUnits, formatUnits, type Address } from 'viem';
 import { 
-  FASTPAY_CONTRACT, 
+  SMARTPAY_CONTRACT, 
   SUPPORTED_TOKENS, 
   ERC20_ABI, 
   NATIVE_TOKEN, 
@@ -57,8 +57,8 @@ export function useIsAccountRegistered() {
   const contractAddresses = getContractAddresses(chainId);
 
   return useReadContract({
-    address: contractAddresses?.fastpay || FASTPAY_CONTRACT.address,
-    abi: FASTPAY_CONTRACT.abi,
+    address: contractAddresses?.fastpay || SMARTPAY_CONTRACT.address,
+    abi: SMARTPAY_CONTRACT.abi,
     functionName: 'isAccountRegistered',
     args: address ? [address] : undefined,
     query: {
@@ -76,8 +76,8 @@ export function useAccountInfo() {
   const contractAddresses = getContractAddresses(chainId);
 
   return useReadContract({
-    address: contractAddresses?.fastpay || FASTPAY_CONTRACT.address,
-    abi: FASTPAY_CONTRACT.abi,
+    address: contractAddresses?.fastpay || SMARTPAY_CONTRACT.address,
+    abi: SMARTPAY_CONTRACT.abi,
     functionName: 'getAccountInfo',
     args: address ? [address] : undefined,
     query: {
@@ -101,8 +101,8 @@ export function useRegisterAccount() {
 
   const registerAccount = async () => {
     await writeContract({
-      address: contractAddresses?.fastpay || FASTPAY_CONTRACT.address,
-      abi: FASTPAY_CONTRACT.abi,
+      address: contractAddresses?.fastpay || SMARTPAY_CONTRACT.address,
+      abi: SMARTPAY_CONTRACT.abi,
       functionName: 'registerAccount',
     });
   };
@@ -128,8 +128,8 @@ export function useSmartPayBalance(tokenSymbol: TokenSymbol) {
   const tokenAddress = tokenConfig.isNative ? NATIVE_TOKEN : tokenConfig.address;
 
   return useReadContract({
-    address: contractAddresses?.fastpay || FASTPAY_CONTRACT.address,
-    abi: FASTPAY_CONTRACT.abi,
+    address: contractAddresses?.fastpay || SMARTPAY_CONTRACT.address,
+    abi: SMARTPAY_CONTRACT.abi,
     functionName: 'getAccountBalance',
     args: address && tokenAddress ? [address, tokenAddress] : undefined,
     query: {
@@ -266,7 +266,7 @@ export function useDepositToSmartPay() {
       
       await writeContract({
         address: contractAddresses.fastpay,
-        abi: FASTPAY_CONTRACT.abi,
+        abi: SMARTPAY_CONTRACT.abi,
         functionName: 'handleFundingTransaction',
         args: [tokenConfig.address, parsedAmount],
       });
@@ -309,7 +309,7 @@ export function useDepositNativeToSmartPay() {
       
       await writeContract({
         address: contractAddresses.fastpay,
-        abi: FASTPAY_CONTRACT.abi,
+        abi: SMARTPAY_CONTRACT.abi,
         functionName: 'handleNativeFundingTransaction',
         value: parsedAmount,
       });

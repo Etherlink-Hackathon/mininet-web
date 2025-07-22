@@ -105,7 +105,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
     if (!validateForm()) return;
     
     clearErrors();
-    
+
     if (!accountInfo?.isRegistered) {
       const regResult = await registerAccount();
       if (!regResult.success) {
