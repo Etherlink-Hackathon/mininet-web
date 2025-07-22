@@ -12,23 +12,23 @@ import { MeshPayMVP } from "../typechain-types";
  * MeshPay end-to-end demo script.
  *
  * Usage example:
- *   npx hardhat run scripts/fastpay_flow.ts --network sepolia \
- *     --fastpay 0xMeshPayAddress \
+ *   npx hardhat run scripts/meshpay_flow.ts --network sepolia \
+ *     --meshpay 0xMeshPayAddress \
  *     --token 0xTokenAddress \
  *     --senderKey <PRIVATE_KEY_1> \
  *     --recipientKey <PRIVATE_KEY_2> \
  *     --fund 500 --transfer 100 --seq 1
  *
  * For native XTZ:
- *   npx hardhat run scripts/fastpay_flow.ts --network sepolia \
- *     --fastpay 0xMeshPayAddress \
+ *   npx hardhat run scripts/meshpay_flow.ts --network sepolia \
+ *     --meshpay 0xMeshPayAddress \
  *     --native \
  *     --senderKey <PRIVATE_KEY_1> \
  *     --recipientKey <PRIVATE_KEY_2> \
  *     --fund 500 --transfer 100 --seq 1
  *
  * Options:
- *   --fastpay       MeshPayMVP contract address (required)
+ *   --meshpay       MeshPayMVP contract address (required)
  *   --token         ERC-20 token address (required)
  *   --senderKey     Sender's private key (required)
  *   --recipientKey  Recipient's private key (required)
@@ -41,7 +41,7 @@ import { MeshPayMVP } from "../typechain-types";
 async function main(): Promise<void> {
   /* ----------------------------- CLI Arguments ----------------------------- */
   const argv = await yargs(hideBin(process.argv))
-    .option("fastpay", { type: "string", demandOption: true, desc: "MeshPayMVP contract address" })
+    .option("meshpay", { type: "string", demandOption: true, desc: "MeshPayMVP contract address" })
     .option("token", { type: "string", desc: "ERC-20 token address (not needed if --native)" })
     .option("native", { type: "boolean", default: false, desc: "Use native XTZ token" })
     .option("senderKey", { type: "string", demandOption: true, desc: "Sender private key" })
@@ -70,12 +70,12 @@ async function main(): Promise<void> {
   console.log("Network:", network.name);
   console.log("Sender:", sender.address);
   console.log("Recipient:", recipient.address);
-  console.log("MeshPay Contract:", argv.fastpay);
+  console.log("MeshPay Contract:", argv.meshpay);
   console.log("Token:", isNative ? "Native XTZ" : tokenAddress);
   console.log("================================\n");
 
   /* --------------------------- Contract Instances ------------------------- */
-  const fastPay: MeshPayMVP = await ethers.getContractAt("MeshPayMVP", argv.fastpay as string, sender);
+  const fastPay: MeshPayMVP = await ethers.getContractAt("MeshPayMVP", argv.meshpay as string, sender);
   const token = isNative ? null : await ethers.getContractAt("IERC20", tokenAddress, sender);
 
   /* ---------------------------- Register Users --------------------------- */
@@ -98,7 +98,7 @@ async function main(): Promise<void> {
     await fundTx.wait();
   } else {
     console.log(`Funding MeshPay with ${argv.fund} tokens …`);
-    const approveTx = await token!.approve(argv.fastpay as string, fundAmount);
+    const approveTx = await token!.approve(argv.meshpay as string, fundAmount);
     await approveTx.wait();
     const fundTx = await fastPay.handleFundingTransaction(tokenAddress, fundAmount);
     await fundTx.wait();

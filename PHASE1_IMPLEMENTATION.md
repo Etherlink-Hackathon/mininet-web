@@ -7,7 +7,7 @@ Phase 1 of the Mesh Network Discovery and Communication Bridge has been successf
 ## 🎯 Completed Components
 
 ### 1. Enhanced Mesh Demo with Internet Gateway
-**File**: `smart-pay/examples/fastpay_mesh_internet_demo.py`
+**File**: `smart-pay/examples/meshpay_mesh_internet_demo.py`
 
 **Key Features**:
 - ✅ IEEE 802.11s mesh network with NAT gateway support
@@ -19,7 +19,7 @@ Phase 1 of the Mesh Network Discovery and Communication Bridge has been successf
 **Usage**:
 ```bash
 # Start mesh network with internet gateway
-sudo python3 -m mn_wifi.examples.fastpay_mesh_internet_demo \
+sudo python3 -m mn_wifi.examples.meshpay_mesh_internet_demo \
   --authorities 5 --clients 3 --internet --gateway-port 8080 --plot
 
 # Test gateway endpoints
@@ -188,7 +188,7 @@ BACKEND_PORT=8000
 ### 1. Start the Enhanced Mesh Network
 ```bash
 cd smart-pay/examples
-sudo python3 fastpay_mesh_internet_demo.py \
+sudo python3 meshpay_mesh_internet_demo.py \
   --authorities 5 \
   --clients 3 \
   --internet \

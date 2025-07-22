@@ -22,7 +22,7 @@ class TokenBalanceResponse(BaseModel):
     token_symbol: str
     token_address: str
     wallet_balance: str
-    fastpay_balance: str
+    meshpay_balance: str
     total_balance: str
     decimals: int
 
@@ -58,7 +58,7 @@ class HealthCheckResponse(BaseModel):
     connected: bool
     chain_id: Optional[int] = None
     latest_block: Optional[int] = None
-    fastpay_contract: bool
+    meshpay_contract: bool
     total_accounts: Optional[int] = None
     error: Optional[str] = None
 
@@ -106,7 +106,7 @@ async def get_wallet_balances(address: str) -> WalletBalancesResponse:
                 token_symbol=balance.token_symbol,
                 token_address=balance.token_address,
                 wallet_balance=balance.wallet_balance,
-                fastpay_balance=balance.fastpay_balance,
+                meshpay_balance=balance.meshpay_balance,
                 total_balance=balance.total_balance,
                 decimals=balance.decimals
             )
@@ -218,7 +218,7 @@ async def blockchain_health_check() -> HealthCheckResponse:
             connected=health_data['connected'],
             chain_id=health_data.get('chain_id'),
             latest_block=health_data.get('latest_block'),
-            fastpay_contract=health_data['fastpay_contract'],
+            meshpay_contract=health_data['meshpay_contract'],
             total_accounts=health_data.get('total_accounts'),
             error=health_data.get('error')
         )
@@ -250,7 +250,7 @@ async def wallet_root():
         return {
             "status": "operational" if health['connected'] else "offline",
             "chain_id": health.get('chain_id'),
-            "fastpay_contract": health['fastpay_contract'],
+            "meshpay_contract": health['meshpay_contract'],
             "endpoints": {
                 "account_info": "/api/wallet/account/{address}",
                 "balances": "/api/wallet/balances/{address}",

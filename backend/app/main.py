@@ -111,7 +111,7 @@ async def health_check() -> Dict[str, Any]:
             "blockchain_client": {
                 "status": "ok" if blockchain_health['connected'] else "error",
                 "chain_id": blockchain_health.get('chain_id'),
-                "fastpay_contract": blockchain_health['fastpay_contract'],
+                "meshpay_contract": blockchain_health['meshpay_contract'],
             }
         },
         "config": {
@@ -140,7 +140,7 @@ async def system_info() -> Dict[str, Any]:
             "rpc_url": settings.rpc_url,
             "chain_id": settings.chain_id,
             "chain_name": settings.chain_name,
-            "fastpay_contract": settings.fastpay_contract_address,
+            "meshpay_contract": settings.meshpay_contract_address,
         },
         "api": {
             "prefix": "/api",

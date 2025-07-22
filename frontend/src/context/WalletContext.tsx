@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, type Address } from 'viem';
 import { SMARTPAY_CONTRACT, SUPPORTED_TOKENS, ERC20_ABI, type TokenSymbol } from '../config/contracts';
-import { MeshPayBalance } from '../services/fastpay';
+import { MeshPayBalance } from '../services/meshpay';
 
 // --- API Response Types (from backend) ---
 interface BackendAccountInfo {
@@ -16,7 +16,7 @@ interface BackendTokenBalance {
   token_symbol: string;
   token_address: string;
   wallet_balance: string;
-  fastpay_balance: string;
+  meshpay_balance: string;
   total_balance: string;
   decimals: number;
 }
@@ -155,17 +155,17 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       });
 
       const newBalances: MeshPayBalance = {
-        XTZ: { wallet: '0', fastpay: '0', total: '0' },
-        WTZ: { wallet: '0', fastpay: '0', total: '0' },
-        USDT: { wallet: '0', fastpay: '0', total: '0' },
-        USDC: { wallet: '0', fastpay: '0', total: '0' },
+        XTZ: { wallet: '0', meshpay: '0', total: '0' },
+        WTZ: { wallet: '0', meshpay: '0', total: '0' },
+        USDT: { wallet: '0', meshpay: '0', total: '0' },
+        USDC: { wallet: '0', meshpay: '0', total: '0' },
       };
       balancesData.balances.forEach(token => {
         const symbol = token.token_symbol as TokenSymbol;
         if (newBalances[symbol]) {
           newBalances[symbol] = {
             wallet: token.wallet_balance,
-            fastpay: token.fastpay_balance,
+            meshpay: token.meshpay_balance,
             total: token.total_balance,
           };
         }

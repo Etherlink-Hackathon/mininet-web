@@ -2,7 +2,9 @@
 Blockchain client for interacting with FastPay smart contracts on Etherlink.
 """
 import asyncio
+import json
 import logging
+from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 from decimal import Decimal
 from dataclasses import dataclass
@@ -11,127 +13,39 @@ from web3 import Web3
 from web3.middleware import geth_poa_middleware
 from eth_account import Account
 
+_ABI_DIR: Path = Path(__file__).resolve().parent.parent / "abis"
 
+def _load_abi(filename: str) -> List[Dict[str, Any]]:
+    """Return ABI list from the given JSON file.
+
+    The JSON may either be a raw list (standard Hardhat export) or an object
+    with an ``abi`` field (solidity-coverage & Foundry style). The helper
+    normalises both cases and always returns the ABI array.
+    """
+
+    with open(_ABI_DIR / filename, "r", encoding="utf-8") as fp:
+        data = json.load(fp)
+
+    if isinstance(data, list):  # Hardhat style export
+        return data
+
+    # Object export: { "abi": [...] }
+    if "abi" in data and isinstance(data["abi"], list):
+        return data["abi"]
+
+    raise ValueError(f"Unsupported ABI format in {_ABI_DIR / filename}")
+
+
+# Expose ABIs as module-level constants (preserves previous variable names)
+MeshPayABI: List[Dict[str, Any]] = _load_abi("MeshPayMVP.json")
+MeshPayAuthoritiesABI: List[Dict[str, Any]] = _load_abi("MeshPayAuthorities.json")
+ERC20ABI: List[Dict[str, Any]] = _load_abi("ERC20.json")
+
+# ---------------------------------------------------------------------------
 
 from ..core.config import settings, SUPPORTED_TOKENS
 
 logger = logging.getLogger(__name__)
-
-# FastPay contract ABI (essential functions)
-FASTPAY_ABI = [
-    # Account Management
-    {
-        "inputs": [],
-        "name": "registerAccount",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [{"name": "account", "type": "address"}],
-        "name": "isAccountRegistered",
-        "outputs": [{"name": "", "type": "bool"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [{"name": "account", "type": "address"}],
-        "name": "getAccountInfo",
-        "outputs": [
-            {"name": "registered", "type": "bool"},
-            {"name": "registrationTime", "type": "uint256"},
-            {"name": "lastRedeemedSequence", "type": "uint256"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    # Balance Management
-    {
-        "inputs": [
-            {"name": "account", "type": "address"},
-            {"name": "token", "type": "address"}
-        ],
-        "name": "getAccountBalance",
-        "outputs": [{"name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [{"name": "token", "type": "address"}],
-        "name": "totalBalance",
-        "outputs": [{"name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "totalAccounts",
-        "outputs": [{"name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    # Constants
-    {
-        "inputs": [],
-        "name": "NATIVE_TOKEN",
-        "outputs": [{"name": "", "type": "address"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    # Events
-    {
-        "anonymous": False,
-        "inputs": [
-            {"indexed": True, "name": "account", "type": "address"},
-            {"indexed": False, "name": "timestamp", "type": "uint256"}
-        ],
-        "name": "AccountRegistered",
-        "type": "event"
-    },
-    {
-        "anonymous": False,
-        "inputs": [
-            {"indexed": True, "name": "sender", "type": "address"},
-            {"indexed": True, "name": "token", "type": "address"},
-            {"indexed": False, "name": "amount", "type": "uint256"},
-            {"indexed": False, "name": "transactionIndex", "type": "uint256"}
-        ],
-        "name": "FundingCompleted",
-        "type": "event"
-    }
-]
-
-# ERC20 ABI (essential functions)
-ERC20_ABI = [
-    {
-        "inputs": [{"name": "account", "type": "address"}],
-        "name": "balanceOf",
-        "outputs": [{"name": "", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "decimals",
-        "outputs": [{"name": "", "type": "uint8"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "symbol",
-        "outputs": [{"name": "", "type": "string"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "name",
-        "outputs": [{"name": "", "type": "string"}],
-        "stateMutability": "view",
-        "type": "function"
-    }
-]
 
 @dataclass
 class AccountInfo:
@@ -147,7 +61,7 @@ class TokenBalance:
     token_symbol: str
     token_address: str
     wallet_balance: str  # In human-readable format
-    fastpay_balance: str  # In human-readable format
+    meshpay_balance: str  # In human-readable format
     total_balance: str
     decimals: int
 
@@ -164,7 +78,7 @@ class BlockchainClient:
     def __init__(self):
         """Initialize blockchain client with Web3 connection."""
         self.w3: Optional[Web3] = None
-        self.fastpay_contract = None
+        self.meshpay_contract = None
         self.account = None
         self._initialize_connection()
     
@@ -185,9 +99,9 @@ class BlockchainClient:
             
             # Initialize FastPay contract if address is configured
             if settings.meshpay_contract_address:
-                self.fastpay_contract = self.w3.eth.contract(
+                self.meshpay_contract = self.w3.eth.contract(
                     address=Web3.to_checksum_address(settings.meshpay_contract_address),
-                    abi=FASTPAY_ABI
+                    abi=MeshPayABI
                 )
                 logger.info(f"FastPay contract initialized at {settings.meshpay_contract_address}")
             
@@ -202,7 +116,7 @@ class BlockchainClient:
     
     async def get_account_info(self, address: str) -> Optional[AccountInfo]:
         """Get account information from FastPay contract."""
-        if not self.fastpay_contract:
+        if not self.meshpay_contract:
             logger.error("FastPay contract not initialized")
             return None
         
@@ -210,7 +124,7 @@ class BlockchainClient:
             address = Web3.to_checksum_address(address)
             
             # Get account info from contract
-            account_data = self.fastpay_contract.functions.getAccountInfo(address).call()
+            account_data = self.meshpay_contract.functions.getAccountInfo(address).call()
             
             return AccountInfo(
                 address=address,
@@ -239,7 +153,7 @@ class BlockchainClient:
                 
                 # Initialize balances
                 wallet_balance = "0"
-                fastpay_balance = "0"
+                meshpay_balance = "0"
                 
                 # Get wallet balance
                 if token_config['is_native']:
@@ -265,7 +179,7 @@ class BlockchainClient:
                                 # Contract exists, try to get balance
                                 token_contract = self.w3.eth.contract(
                                     address=token_address_checksum,
-                                    abi=ERC20_ABI
+                                    abi=ERC20ABI
                                 )
                                 wallet_balance_wei = token_contract.functions.balanceOf(address).call()
                                 wallet_balance = self._wei_to_human(wallet_balance_wei, decimals)
@@ -282,36 +196,36 @@ class BlockchainClient:
                         wallet_balance = "0"
                 
                 # Get MeshPay balance (only if MeshPay contract is available)
-                if self.fastpay_contract:
+                if self.meshpay_contract:
                     try:
                         # Use the correct token address for MeshPay contract
                         if token_config['is_native']:
                             # Use NATIVE_TOKEN address (0x0000000000000000000000000000000000000000) for XTZ
-                            fastpay_token_address = '0x0000000000000000000000000000000000000000'
+                            meshpay_token_address = '0x0000000000000000000000000000000000000000'
                         else:
-                            fastpay_token_address = Web3.to_checksum_address(token_address) if token_address else '0x0000000000000000000000000000000000000000'
+                            meshpay_token_address = Web3.to_checksum_address(token_address) if token_address else '0x0000000000000000000000000000000000000000'
                         
-                        fastpay_balance_wei = self.fastpay_contract.functions.getAccountBalance(
-                            address, fastpay_token_address
+                        meshpay_balance_wei = self.meshpay_contract.functions.getAccountBalance(
+                            address, meshpay_token_address
                         ).call()
-                        fastpay_balance = self._wei_to_human(fastpay_balance_wei, decimals)
-                        logger.info(f"Successfully got {token_symbol} MeshPay balance: {fastpay_balance}")
+                        meshpay_balance = self._wei_to_human(meshpay_balance_wei, decimals)
+                        logger.info(f"Successfully got {token_symbol} MeshPay balance: {meshpay_balance}")
                         
                     except Exception as e:
                         logger.error(f"Failed to get {token_symbol} MeshPay balance for {address}: {e}")
-                        fastpay_balance = "0"
+                        meshpay_balance = "0"
                 else:
                     logger.warning("MeshPay contract not available, using 0 for MeshPay balances")
-                    fastpay_balance = "0"
+                    meshpay_balance = "0"
                 
                 # Calculate total
-                total_balance = str(Decimal(wallet_balance) + Decimal(fastpay_balance))
+                total_balance = str(Decimal(wallet_balance) + Decimal(meshpay_balance))
                 
                 balances.append(TokenBalance(
                     token_symbol=token_symbol,
                     token_address=token_address,
                     wallet_balance=wallet_balance,
-                    fastpay_balance=fastpay_balance,
+                    meshpay_balance=meshpay_balance,
                     total_balance=total_balance,
                     decimals=decimals
                 ))
@@ -323,7 +237,7 @@ class BlockchainClient:
                     token_symbol=token_symbol,
                     token_address=token_config['address'],
                     wallet_balance="0",
-                    fastpay_balance="0",
+                    meshpay_balance="0",
                     total_balance="0",
                     decimals=token_config['decimals']
                 ))
@@ -332,13 +246,13 @@ class BlockchainClient:
     
     async def get_contract_stats(self) -> Optional[ContractStats]:
         """Get overall contract statistics."""
-        if not self.fastpay_contract:
+        if not self.meshpay_contract:
             logger.error("FastPay contract not initialized")
             return None
         
         try:
             # Get total accounts
-            total_accounts = self.fastpay_contract.functions.totalAccounts().call()
+            total_accounts = self.meshpay_contract.functions.totalAccounts().call()
             
             # Get total balances for each token
             total_token_balances = {}
@@ -346,7 +260,7 @@ class BlockchainClient:
             
             for token_symbol, token_config in SUPPORTED_TOKENS.items():
                 token_address = Web3.to_checksum_address(token_config['address'])
-                total_balance_wei = self.fastpay_contract.functions.totalBalance(token_address).call()
+                total_balance_wei = self.meshpay_contract.functions.totalBalance(token_address).call()
                 total_balance = self._wei_to_human(total_balance_wei, token_config['decimals'])
                 
                 if token_config['is_native']:
@@ -366,19 +280,19 @@ class BlockchainClient:
     
     async def is_account_registered(self, address: str) -> bool:
         """Check if an account is registered with FastPay."""
-        if not self.fastpay_contract:
+        if not self.meshpay_contract:
             return False
         
         try:
             address = Web3.to_checksum_address(address)
-            return self.fastpay_contract.functions.isAccountRegistered(address).call()
+            return self.meshpay_contract.functions.isAccountRegistered(address).call()
         except Exception as e:
             logger.error(f"Failed to check registration for {address}: {e}")
             return False
     
     async def get_recent_events(self, event_name: str, from_block: int = None, limit: int = 100) -> List[Dict]:
         """Get recent contract events."""
-        if not self.fastpay_contract:
+        if not self.meshpay_contract:
             return []
         
         try:
@@ -387,7 +301,7 @@ class BlockchainClient:
                 latest_block = self.w3.eth.block_number
                 from_block = max(0, latest_block - 1000)
             
-            event_filter = getattr(self.fastpay_contract.events, event_name).create_filter(
+            event_filter = getattr(self.meshpay_contract.events, event_name).create_filter(
                 fromBlock=from_block,
                 toBlock='latest'
             )
@@ -425,7 +339,7 @@ class BlockchainClient:
             'connected': False,
             'chain_id': None,
             'latest_block': None,
-            'fastpay_contract': False,
+            'meshpay_contract': False,
             'error': None
         }
         
@@ -435,10 +349,10 @@ class BlockchainClient:
                 health_status['chain_id'] = self.w3.eth.chain_id
                 health_status['latest_block'] = self.w3.eth.block_number
                 
-                if self.fastpay_contract:
+                if self.meshpay_contract:
                     # Test contract call
-                    total_accounts = self.fastpay_contract.functions.totalAccounts().call()
-                    health_status['fastpay_contract'] = True
+                    total_accounts = self.meshpay_contract.functions.totalAccounts().call()
+                    health_status['meshpay_contract'] = True
                     health_status['total_accounts'] = total_accounts
                     
         except Exception as e:

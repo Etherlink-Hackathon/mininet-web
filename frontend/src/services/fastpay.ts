@@ -19,7 +19,7 @@ import {
 // Types for MeshPay operations
 export interface TokenBalance {
   wallet: string; // Regular wallet balance
-  fastpay: string; // MeshPay system balance
+  meshpay: string; // MeshPay system balance
   total: string; // Combined balance
 }
 
@@ -58,7 +58,7 @@ export function useIsAccountRegistered() {
   const contractAddresses = getContractAddresses(chainId);
 
   return useReadContract({
-    address: contractAddresses?.fastpay || SMARTPAY_CONTRACT.address,
+    address: contractAddresses?.meshpay || SMARTPAY_CONTRACT.address,
     abi: SMARTPAY_CONTRACT.abi,
     functionName: 'isAccountRegistered',
     args: address ? [address] : undefined,
@@ -77,7 +77,7 @@ export function useAccountInfo() {
   const contractAddresses = getContractAddresses(chainId);
 
   return useReadContract({
-    address: contractAddresses?.fastpay || SMARTPAY_CONTRACT.address,
+    address: contractAddresses?.meshpay || SMARTPAY_CONTRACT.address,
     abi: SMARTPAY_CONTRACT.abi,
     functionName: 'getAccountInfo',
     args: address ? [address] : undefined,
@@ -102,7 +102,7 @@ export function useRegisterAccount() {
 
   const registerAccount = async () => {
     await writeContract({
-      address: contractAddresses?.fastpay || SMARTPAY_CONTRACT.address,
+      address: contractAddresses?.meshpay || SMARTPAY_CONTRACT.address,
       abi: SMARTPAY_CONTRACT.abi,
       functionName: 'registerAccount',
     });
@@ -129,7 +129,7 @@ export function useMeshPayBalance(tokenSymbol: TokenSymbol) {
   const tokenAddress = tokenConfig.isNative ? NATIVE_TOKEN : tokenConfig.address;
 
   return useReadContract({
-    address: contractAddresses?.fastpay || SMARTPAY_CONTRACT.address,
+    address: contractAddresses?.meshpay || SMARTPAY_CONTRACT.address,
     abi: SMARTPAY_CONTRACT.abi,
     functionName: 'getAccountBalance',
     args: address && tokenAddress ? [address, tokenAddress] : undefined,
@@ -182,9 +182,9 @@ export function useTokenAllowance(tokenSymbol: Exclude<TokenSymbol, 'XTZ'>) {
     address: tokenConfig.address,
     abi: ERC20_ABI,
     functionName: 'allowance',
-    args: address && contractAddresses?.fastpay ? [address, contractAddresses.fastpay] : undefined,
+    args: address && contractAddresses?.meshpay ? [address, contractAddresses.meshpay] : undefined,
     query: {
-      enabled: !!address && !tokenConfig.isNative && !!contractAddresses?.fastpay,
+      enabled: !!address && !tokenConfig.isNative && !!contractAddresses?.meshpay,
     },
   });
 }
@@ -209,7 +209,7 @@ export function useApproveToken() {
       throw new Error('Native tokens do not require approval');
     }
 
-    if (!contractAddresses?.fastpay) {
+    if (!contractAddresses?.meshpay) {
       throw new Error('Contract addresses not configured');
     }
 
@@ -220,7 +220,7 @@ export function useApproveToken() {
         address: tokenConfig.address,
         abi: ERC20_ABI,
         functionName: 'approve',
-        args: [contractAddresses.fastpay, parsedAmount],
+        args: [contractAddresses.meshpay, parsedAmount],
       });
     } catch (err) {
       console.error('Failed to approve token:', err);
@@ -258,7 +258,7 @@ export function useDepositToMeshPay() {
       throw new Error('Use depositNativeToMeshPay for XTZ deposits');
     }
 
-    if (!contractAddresses?.fastpay) {
+    if (!contractAddresses?.meshpay) {
       throw new Error('Contract addresses not configured');
     }
 
@@ -266,7 +266,7 @@ export function useDepositToMeshPay() {
       const parsedAmount = parseUnits(amount, tokenConfig.decimals);
       
       await writeContract({
-        address: contractAddresses.fastpay,
+        address: contractAddresses.meshpay,
         abi: SMARTPAY_CONTRACT.abi,
         functionName: 'handleFundingTransaction',
         args: [tokenConfig.address, parsedAmount],
@@ -301,7 +301,7 @@ export function useDepositNativeToMeshPay() {
   });
 
   const depositNative = async (amount: string) => {
-    if (!contractAddresses?.fastpay) {
+    if (!contractAddresses?.meshpay) {
       throw new Error('Contract addresses not configured');
     }
 
@@ -309,7 +309,7 @@ export function useDepositNativeToMeshPay() {
       const parsedAmount = parseUnits(amount, SUPPORTED_TOKENS.XTZ.decimals);
       
       await writeContract({
-        address: contractAddresses.fastpay,
+        address: contractAddresses.meshpay,
         abi: SMARTPAY_CONTRACT.abi,
         functionName: 'handleNativeFundingTransaction',
         value: parsedAmount,
@@ -361,31 +361,31 @@ export function useCombinedBalances(): {
     const balances: MeshPayBalance = {
       XTZ: {
         wallet: xtzWallet ? formatBalance(xtzWallet.value, SUPPORTED_TOKENS.XTZ.decimals) : '0',
-        fastpay: xtzMeshPay ? formatBalance(xtzMeshPay as bigint, SUPPORTED_TOKENS.XTZ.decimals) : '0',
+        meshpay: xtzMeshPay ? formatBalance(xtzMeshPay as bigint, SUPPORTED_TOKENS.XTZ.decimals) : '0',
         total: '0', // Will be calculated below
       },
       WTZ: {
         wallet: wtzWallet ? formatBalance(wtzWallet.value, SUPPORTED_TOKENS.WTZ.decimals) : '0',
-        fastpay: wtzMeshPay ? formatBalance(wtzMeshPay as bigint, SUPPORTED_TOKENS.WTZ.decimals) : '0',
+        meshpay: wtzMeshPay ? formatBalance(wtzMeshPay as bigint, SUPPORTED_TOKENS.WTZ.decimals) : '0',
         total: '0', // Will be calculated below
       },
       USDT: {
         wallet: usdtWallet ? formatBalance(usdtWallet.value, SUPPORTED_TOKENS.USDT.decimals) : '0',
-        fastpay: usdtMeshPay ? formatBalance(usdtMeshPay as bigint, SUPPORTED_TOKENS.USDT.decimals) : '0',
+        meshpay: usdtMeshPay ? formatBalance(usdtMeshPay as bigint, SUPPORTED_TOKENS.USDT.decimals) : '0',
         total: '0', // Will be calculated below
       },
       USDC: {
         wallet: usdcWallet ? formatBalance(usdcWallet.value, SUPPORTED_TOKENS.USDC.decimals) : '0',
-        fastpay: usdcMeshPay ? formatBalance(usdcMeshPay as bigint, SUPPORTED_TOKENS.USDC.decimals) : '0',
+        meshpay: usdcMeshPay ? formatBalance(usdcMeshPay as bigint, SUPPORTED_TOKENS.USDC.decimals) : '0',
         total: '0', // Will be calculated below
       },
     };
 
     // Calculate totals
-    balances.XTZ.total = (parseFloat(balances.XTZ.wallet) + parseFloat(balances.XTZ.fastpay)).toFixed(6);
-    balances.WTZ.total = (parseFloat(balances.WTZ.wallet) + parseFloat(balances.WTZ.fastpay)).toFixed(6);
-    balances.USDT.total = (parseFloat(balances.USDT.wallet) + parseFloat(balances.USDT.fastpay)).toFixed(6);
-    balances.USDC.total = (parseFloat(balances.USDC.wallet) + parseFloat(balances.USDC.fastpay)).toFixed(6);
+    balances.XTZ.total = (parseFloat(balances.XTZ.wallet) + parseFloat(balances.XTZ.meshpay)).toFixed(6);
+    balances.WTZ.total = (parseFloat(balances.WTZ.wallet) + parseFloat(balances.WTZ.meshpay)).toFixed(6);
+    balances.USDT.total = (parseFloat(balances.USDT.wallet) + parseFloat(balances.USDT.meshpay)).toFixed(6);
+    balances.USDC.total = (parseFloat(balances.USDC.wallet) + parseFloat(balances.USDC.meshpay)).toFixed(6);
 
     return { balances, isLoading: false, error: null };
   } catch (err) {

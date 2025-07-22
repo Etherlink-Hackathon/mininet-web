@@ -241,7 +241,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - **Etherlink Documentation**: https://docs.etherlink.com/
-- **MeshPay Repository**: ../fastpay/
+- **MeshPay Repository**: ../meshpay/
 - **Mininet-WiFi**: ../mininet-wifi/
 
 ## 🎯 Etherlink Summer Camp Submission

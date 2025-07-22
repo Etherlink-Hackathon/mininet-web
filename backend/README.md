@@ -65,10 +65,10 @@ uvicorn app.main:app --reload --port 8000
 
 ```bash
 # Build image
-docker build -t fastpay-backend .
+docker build -t meshpay-backend .
 
 # Run (maps port 8000)
-docker run --rm -p 8000:8000 -e MESH_GATEWAY_URL=http://10.0.0.254:8080 fastpay-backend
+docker run --rm -p 8000:8000 -e MESH_GATEWAY_URL=http://10.0.0.254:8080 meshpay-backend
 ```
 
 ---

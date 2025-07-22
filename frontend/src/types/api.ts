@@ -101,12 +101,12 @@ export interface WalletBalance {
 export interface EnhancedWalletBalance {
   USDT: {
     wallet: number;      // Regular wallet balance
-    fastpay: number;     // MeshPay system balance  
+    meshpay: number;     // MeshPay system balance  
     total: number;       // Combined balance
   };
   USDC: {
     wallet: number;
-    fastpay: number;
+    meshpay: number;
     total: number;
   };
 }

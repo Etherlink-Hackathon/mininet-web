@@ -187,7 +187,7 @@ const Wallet: React.FC = () => {
                   </Box>
                   <Box>
                     <Typography variant="body2" color="text.secondary">MeshPay Balance</Typography>
-                    <Typography variant="h6" color="primary.main">{formatBalance(balance.fastpay)}</Typography>
+                    <Typography variant="h6" color="primary.main">{formatBalance(balance.meshpay)}</Typography>
                   </Box>
                   <Divider sx={{ my: 1 }} />
                   <Box>

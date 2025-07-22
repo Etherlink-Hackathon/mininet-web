@@ -1,5 +1,5 @@
 {
-  "name": "fastpay-smart-contracts",
+  "name": "meshpay-smart-contracts",
   "version": "1.0.0",
   "description": "MeshPay smart contracts for offline payment processing on Etherlink",
   "main": "index.js",

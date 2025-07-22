@@ -21,6 +21,8 @@ import {
   Receipt,
   Add,
 } from '@mui/icons-material';
+import { useWalletContext } from '../context/WalletContext';
+import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
 
 import { AuthorityInfo, ShardInfo, NetworkMetrics } from '../types/api';
 import { apiService } from '../services/api';
@@ -29,7 +31,6 @@ import DepositModal from '../components/DepositModal';
 import NetworkMap from '../components/NetworkMap';
 
 interface DashboardStats {
-  totalBalance: number;
   onlineAuthorities: number;
   totalAuthorities: number;
   averageLatency: number;
@@ -37,8 +38,25 @@ interface DashboardStats {
 }
 
 const Dashboard: React.FC = () => {
+
+  /* ------------------------------------------------------------------ */
+  /* Wallet balances (MeshPay + on-chain)                               */
+  /* ------------------------------------------------------------------ */
+  const { 
+    isConnected, 
+    balances,
+    fetchData,
+    address,
+  } = useWalletContext();
+
+  // Refresh data when account changes
+  useEffect(() => {
+    if (isConnected && address) {
+      fetchData();
+    }
+  }, [isConnected, address]);
+
   const [stats, setStats] = useState<DashboardStats>({
-    totalBalance: 1500000, // Mock data in smallest units
     onlineAuthorities: 0,
     totalAuthorities: 0,
     averageLatency: 0,
@@ -86,8 +104,10 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const formatBalance = (balance: number): string => {
-    return (balance / 1000000).toFixed(2); // Convert from smallest unit to tokens
+  /* Format numeric or string balances with thousands separators */
+  const formatBalance = (balance: string | number): string => {
+    const num = typeof balance === 'string' ? parseFloat(balance) : balance;
+    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
   };
 
   const getNetworkStatusColor = (): 'success' | 'warning' | 'error' => {
@@ -125,26 +145,38 @@ const Dashboard: React.FC = () => {
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
-      {/* Stats Cards */}
-      <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <AccountBalanceWallet color="primary" sx={{ fontSize: 40 }} />
-                <Box>
-                  <Typography variant="h4" color="primary">
-                    {formatBalance(stats.totalBalance)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    USDT Balance
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
+      {isConnected && balances && (
+        <Grid container spacing={3} mb={4}>
+          {Object.entries(balances)
+            .filter(([, bal]) => parseFloat(bal.meshpay) > 0)
+            .map(([symbol, balanceData]) => {
+              const tokenKey = symbol as TokenSymbol;
+              const tokenCfg = SUPPORTED_TOKENS[tokenKey];
+              return (
+                <Grid item xs={12} sm={6} md={3} key={symbol}>
+                  <Card sx={{ background: 'rgba(26, 31, 46, 0.4)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                    <CardContent>
+                      <Box display="flex" alignItems="center" gap={2}>
+                        <img src={tokenCfg.icon} alt={tokenCfg.symbol} width={32} height={32} />
+                        <Box>
+                          <Typography variant="h5" color="primary.main" fontWeight={600}>
+                            {formatBalance(balanceData.meshpay)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {tokenCfg.symbol} MeshPay
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
         </Grid>
+      )}
 
+      {/* Stats Cards (network-level metrics) */}
+      <Grid container spacing={3} mb={4}>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>

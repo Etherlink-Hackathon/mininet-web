@@ -47,7 +47,7 @@ export const SUPPORTED_TOKENS = {
     symbol: 'WTZ',
     name: 'Wrapped Tezos',
     isNative: false,
-    icon: '/wtz.svg',
+    icon: '/xtz.svg',
   },
   USDT: {
     address: (import.meta.env.VITE_USDT_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
@@ -101,7 +101,7 @@ export const ETHERLINK_CHAIN_CONFIG = {
 // Contract addresses by chain ID
 export const CONTRACT_ADDRESSES = {
   [ETHERLINK_CHAIN_CONFIG.id]: {
-    fastpay: SMARTPAY_CONTRACT.address,
+    meshpay: SMARTPAY_CONTRACT.address,
     authority: FASTPAY_AUTHORITY_CONTRACT.address,
     tokens: {
       USDT: SUPPORTED_TOKENS.USDT.address,

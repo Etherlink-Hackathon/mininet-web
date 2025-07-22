@@ -1,14 +1,14 @@
 # FASTPAY MESH INTEGRATION IMPLEMENTATION PLAN
 ================================================================================
 📅 Timestamp: 2025-01-15T00:00:00Z (Updated)
-📋 Project: Integration of smart-pay fastpay_mesh_demo.py with mininet-web system
+📋 Project: Integration of smart-pay meshpay_mesh_demo.py with mininet-web system
 🎯 Goal: Enable mesh network MeshPay transactions via web interface with Internet Gateway
 
 ## OVERVIEW
 ================================================================================
 
 This plan integrates three main components through a dedicated internet gateway:
-1. 📡 smart-pay/examples/fastpay_mesh_demo.py - IEEE 802.11s mesh network setup
+1. 📡 smart-pay/examples/meshpay_mesh_demo.py - IEEE 802.11s mesh network setup
 2. 🌉 Mesh Gateway Bridge - NAT-enabled internet connectivity for mesh nodes
 3. 🖥️ mininet-web/backend - FastAPI service for authority communication  
 4. 🌐 mininet-web/frontend - React web interface for payments and visualization
@@ -90,7 +90,7 @@ This plan integrates three main components through a dedicated internet gateway:
 --------------------------------------------------------------------------------
 
 #### 1.1 Enhanced Mesh Demo with NAT Gateway
-**File**: `smart-pay/examples/fastpay_mesh_internet_demo.py` (NEW)
+**File**: `smart-pay/examples/meshpay_mesh_internet_demo.py` (NEW)
 
 **Key Components**:
 ```python
@@ -400,7 +400,7 @@ class TestGatewayIntegration:
 echo "🌐 Starting MeshPay Mesh with Internet Gateway + Web Demo"
 
 # Start enhanced mesh network with gateway
-python3 -m mn_wifi.examples.fastpay_mesh_internet_demo \
+python3 -m mn_wifi.examples.meshpay_mesh_internet_demo \
   --authorities $AUTHORITIES \
   --clients $CLIENTS \
   --internet \

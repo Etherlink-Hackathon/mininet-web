@@ -233,7 +233,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
                     <Typography variant="body2">MeshPay:</Typography>
                   </Box>
                   <Typography variant="body2" fontWeight="medium">
-                    {formatBalance(balances[token].fastpay)}
+                    {formatBalance(balances[token].meshpay)}
                   </Typography>
                 </Box>
               </CardContent>
