@@ -84,7 +84,8 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
   };
   
   const handleClose = () => {
-    if (depositStatus.isPending) return;
+    // Allow closing if transaction is completed or not pending
+    if (depositStatus.isPending && depositStatus.currentStep !== 'completed') return;
     setAmount('');
     setError(null);
     clearErrors();
@@ -101,6 +102,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
   };
 
   const isTransactionPending = depositStatus.isPending;
+  const isTransactionCompleted = depositStatus.currentStep === 'completed';
 
   return (
     <Dialog 
@@ -257,14 +259,14 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
       <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
         <Button 
           onClick={handleClose}
-          disabled={isTransactionPending}
+          disabled={isTransactionPending && !isTransactionCompleted}
         >
-          {isTransactionPending ? 'In Progress...' : 'Cancel'}
+          {isTransactionCompleted ? 'Cancel' : (isTransactionPending ? 'In Progress...' : 'Cancel')}
         </Button>
         <Button
           variant="contained"
           onClick={handleDeposit}
-          disabled={isTransactionPending || !amount}
+          disabled={isTransactionPending || !amount || isTransactionCompleted}
           startIcon={isTransactionPending ? <CircularProgress size={16} /> : undefined}
           sx={{
             background: 'linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%)',
@@ -274,8 +276,10 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
           }}
         >
           {isTransactionPending
-            ? `${depositStatus.currentStep === 'approving' ? 'Approving...' : 'Depositing...'}`
-            : 'Deposit Now'
+          ? isTransactionCompleted
+            ? 'Deposit Completed'
+            : `${depositStatus.currentStep === 'approving' ? 'Approving...' : 'Depositing...'}`
+          : 'Deposit Now'
           }
         </Button>
       </DialogActions>

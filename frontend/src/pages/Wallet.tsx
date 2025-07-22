@@ -140,7 +140,7 @@ const Wallet: React.FC = () => {
       <Box mb={4}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h4" fontWeight={600}>Your Wallet</Typography>
-          <Button variant="outlined" startIcon={<Refresh />} onClick={fetchData} disabled={loading}>
+          <Button onClick={fetchData} variant="outlined" startIcon={<Refresh />} disabled={loading}>
             {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </Box>

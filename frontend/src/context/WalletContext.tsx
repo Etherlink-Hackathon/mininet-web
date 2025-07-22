@@ -5,10 +5,7 @@ import { type Address } from 'viem';
 import { MESHPAY_CONTRACT, SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
 import {
   MeshPayBalance,
-  useApproveToken,
-  useDepositToMeshPay,
-  useDepositNativeToMeshPay,
-  performDeposit,
+  useDepositFlow,
 } from '../services/meshpay';
 
 // --- API Response Types (from backend) ---
@@ -126,9 +123,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   });
   
   // MeshPay-specific hooks (reusable across app)
-  const { approveToken } = useApproveToken();
-  const { deposit: depositErc20 } = useDepositToMeshPay();
-  const { depositNative } = useDepositNativeToMeshPay();
+  const { 
+    initiateDeposit, 
+    isLoading: isDepositFlowLoading, 
+    isApprovePending, 
+    isDepositPending, 
+    isSuccess: isDepositFlowSuccess,
+    error: depositFlowError
+  } = useDepositFlow();
 
   // Note: We rely on the status flags returned by these hooks if needed.
 
@@ -205,22 +207,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         error: null,
       });
 
-      const result = await performDeposit(token, amount, approveToken, depositErc20, depositNative);
+      await initiateDeposit(token, amount);
 
-      if (result.success) {
-        // Trigger data refresh; status updates are handled by hooks internally.
-        fetchData();
-      } else {
-        setDepositStatus(prev => ({
-          ...prev,
-          isPending: false,
-          isConfirming: false,
-          currentStep: 'idle',
-          error: result.error || 'Deposit failed',
-        }));
-      }
-
-      return result;
+      return { success: true };
     } catch (err) {
       setDepositStatus(prev => ({
         ...prev,
@@ -229,6 +218,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         currentStep: 'idle',
         error: err instanceof Error ? err.message : 'Deposit failed',
       }));
+    
       return { success: false };
     }
   };
@@ -239,8 +229,45 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   };
 
   // Effects for handling transaction states
-  // The hooks imported above provide their own status booleans; you could
-  // additionally watch them here to update depositStatus if desired.
+  // Watch for deposit flow completion
+  useEffect(() => {
+    if (isDepositFlowSuccess) {
+      setDepositStatus(prev => ({ ...prev, currentStep: 'completed' }));
+      fetchData(); // Refresh data
+    }
+  }, [isDepositFlowSuccess]);
+
+  // Update status based on deposit flow state
+  useEffect(() => {
+    if (isApprovePending) {
+      setDepositStatus(prev => ({ ...prev, currentStep: 'approving', isPending: true }));
+    } else if (isDepositPending) {
+      setDepositStatus(prev => ({ ...prev, currentStep: 'depositing', isPending: true }));
+    }
+  }, [isApprovePending, isDepositPending]);
+
+  // Handle user rejection or errors from deposit flow
+  useEffect(() => {
+    if (depositFlowError) {
+      const errorMessage = depositFlowError.message || 'Transaction failed';
+      
+      // Check if user rejected the transaction
+      const isUserRejection = errorMessage.includes('User rejected') || 
+                             errorMessage.includes('user rejected') ||
+                             errorMessage.includes('User denied') ||
+                             errorMessage.includes('user denied') ||
+                             errorMessage.includes('rejected') ||
+                             errorMessage.includes('denied');
+      
+      setDepositStatus(prev => ({
+        ...prev,
+        isPending: false,
+        isConfirming: false,
+        currentStep: 'idle', 
+        error: isUserRejection ? 'Transaction rejected by user' : errorMessage,
+      }));
+    }
+  }, [depositFlowError]);
 
   // Refresh data when account changes
   useEffect(() => {

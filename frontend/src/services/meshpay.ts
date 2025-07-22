@@ -15,6 +15,7 @@ import {
   getContractAddresses,
   type SupportedToken
 } from '../config/contracts';
+import { useState, useEffect } from 'react';
 
 
 // Types for MeshPay operations
@@ -45,80 +46,21 @@ export interface DepositResult {
 // Extended type for all supported tokens including XTZ
 export type TokenSymbol = SupportedToken;
 
-// Helper function to format balance with proper decimals
-function formatBalance(value: bigint, decimals: number): string {
-  return formatUnits(value, decimals);
-}
-
-/**
- * Hook to check if account is registered with MeshPay
- */
-export function useIsAccountRegistered() {
-  const { address } = useAccount();
-  // const chainId = useChainId();
-
-  const contractAddresses = getContractAddresses();
-
-  return useReadContract({
-    address: contractAddresses?.meshpay || MESHPAY_CONTRACT.address,
-    abi: MESHPAY_CONTRACT.abi,
-    functionName: 'isAccountRegistered',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address,
-    },
-  });
-}
-
-/**
- * Hook to get account information
- */
-export function useAccountInfo() {
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const contractAddresses = getContractAddresses();
-
-  return useReadContract({
-    address: contractAddresses?.meshpay || MESHPAY_CONTRACT.address,
-    abi: MESHPAY_CONTRACT.abi,
-    functionName: 'getAccountInfo',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address,
-    },
-  });
-}
-
-/**
- * Hook to register account with MeshPay
- */
-export function useRegisterAccount() {
-  const chainId = useChainId();
-  const contractAddresses = getContractAddresses();
-
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash,
-  });
-
-  const registerAccount = async () => {
-    await writeContract({
-      address: contractAddresses?.meshpay || MESHPAY_CONTRACT.address,
-      abi: MESHPAY_CONTRACT.abi,
-      functionName: 'registerAccount',
-    });
-  };
-
-  return {
-    registerAccount,
-    hash,
-    isPending,
-    isConfirming,
-    isConfirmed,
-    error,
-  };
-}
+// Gas override functions for different transaction types
+const overrideGas = {
+  // Base gas for simple operations
+  base: () => BigInt(1_000_000),
+  
+  // Gas for token approval (ERC20) - more conservative
+  approve: (amount: string) => BigInt(1_000_000),
+  
+  // Gas for token deposits (ERC20)
+  deposit: (amount: string) => BigInt(1_500_000),
+  
+  // Gas for native XTZ deposits
+  depositNative: (amount: string) => BigInt(1_500_000),
+  
+};
 
 /**
  * Hook to get MeshPay balance for a specific token (including native XTZ)
@@ -192,6 +134,42 @@ export function useTokenAllowance(tokenSymbol: Exclude<TokenSymbol, 'XTZ'>) {
 }
 
 /**
+ * Hook to check if account is registered with MeshPay
+ */
+export function useIsAccountRegistered() {
+  const { address } = useAccount();
+  const contractAddresses = getContractAddresses();
+
+  return useReadContract({
+    address: contractAddresses?.meshpay || MESHPAY_CONTRACT.address,
+    abi: MESHPAY_CONTRACT.abi,
+    functionName: 'isAccountRegistered',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+    },
+  });
+}
+
+/**
+ * Hook to get account information
+ */
+export function useAccountInfo() {
+  const { address } = useAccount();
+  const contractAddresses = getContractAddresses();
+
+  return useReadContract({
+    address: contractAddresses?.meshpay || MESHPAY_CONTRACT.address,
+    abi: MESHPAY_CONTRACT.abi,
+    functionName: 'getAccountInfo',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+    },
+  });
+}
+
+/**
  * Hook to approve token spending by MeshPay contract (ERC20 only)
  */
 export function useApproveToken() {
@@ -218,12 +196,13 @@ export function useApproveToken() {
 
     try {
       const parsedAmount = parseUnits(amount, tokenConfig.decimals);
-      console.log(parsedAmount, "parsedAmount")
+
       await writeContract({
         address: tokenConfig.address,
         abi: ERC20_CONTRACT.abi,
         functionName: 'approve',
         args: [contractAddresses.meshpay, parsedAmount],
+        gas: overrideGas.approve(amount),
       });
     } catch (err) {
       console.error('Failed to approve token:', err);
@@ -245,7 +224,6 @@ export function useApproveToken() {
  * Hook to deposit tokens to MeshPay system (ERC20 tokens)
  */
 export function useDepositToMeshPay() {
-  const chainId = useChainId();
   const contractAddresses = getContractAddresses();
 
   const { writeContract, data: hash, isPending, error } = useWriteContract();
@@ -266,13 +244,12 @@ export function useDepositToMeshPay() {
     }
 
     try {
-      const parsedAmount = parseUnits(amount, tokenConfig.decimals);
-      console.log(parsedAmount, "parsedAmount")
       await writeContract({
         address: contractAddresses.meshpay,
         abi: MESHPAY_CONTRACT.abi,
         functionName: 'handleFundingTransaction',
-        args: [tokenConfig.address, parsedAmount],
+        args: [tokenConfig.address, amount],
+        gas: overrideGas.deposit(amount),
       });
     } catch (err) {
       console.error('Failed to deposit to MeshPay:', err);
@@ -316,6 +293,7 @@ export function useDepositNativeToMeshPay() {
         abi: MESHPAY_CONTRACT.abi,
         functionName: 'handleNativeFundingTransaction',
         value: parsedAmount,
+        gas: overrideGas.depositNative(amount),
       });
     } catch (err) {
       console.error('Failed to deposit native XTZ to MeshPay:', err);
@@ -333,106 +311,83 @@ export function useDepositNativeToMeshPay() {
   };
 }
 
-/**
- * Utility function to get combined balance data
- */
-export function useCombinedBalances(): {
-  balances: MeshPayBalance | null;
-  isLoading: boolean;
-  error: string | null;
-} {
-  // Regular wallet balances
-  const { data: xtzWallet, isLoading: xtzWalletLoading } = useTokenBalance('XTZ');
-  const { data: wtzWallet, isLoading: wtzWalletLoading } = useTokenBalance('WTZ');
-  const { data: usdtWallet, isLoading: usdtWalletLoading } = useTokenBalance('USDT');
-  const { data: usdcWallet, isLoading: usdcWalletLoading } = useTokenBalance('USDC');
-
-  // MeshPay balances
-  const { data: xtzMeshPay, isLoading: xtzMeshPayLoading } = useMeshPayBalance('XTZ');
-  const { data: wtzMeshPay, isLoading: wtzMeshPayLoading } = useMeshPayBalance('WTZ');
-  const { data: usdtMeshPay, isLoading: usdtMeshPayLoading } = useMeshPayBalance('USDT');
-  const { data: usdcMeshPay, isLoading: usdcMeshPayLoading } = useMeshPayBalance('USDC');
-
-  const isLoading = xtzWalletLoading || usdtWalletLoading || usdcWalletLoading ||
-                   xtzMeshPayLoading || usdtMeshPayLoading || usdcMeshPayLoading;
-
-  if (isLoading) {
-    return { balances: null, isLoading: true, error: null };
-  }
-
-  try {
-    const balances: MeshPayBalance = {
-      XTZ: {
-        wallet: xtzWallet ? formatBalance(xtzWallet.value, SUPPORTED_TOKENS.XTZ.decimals) : '0',
-        meshpay: xtzMeshPay ? formatBalance(xtzMeshPay as bigint, SUPPORTED_TOKENS.XTZ.decimals) : '0',
-        total: '0', // Will be calculated below
-      },
-      WTZ: {
-        wallet: wtzWallet ? formatBalance(wtzWallet.value, SUPPORTED_TOKENS.WTZ.decimals) : '0',
-        meshpay: wtzMeshPay ? formatBalance(wtzMeshPay as bigint, SUPPORTED_TOKENS.WTZ.decimals) : '0',
-        total: '0', // Will be calculated below
-      },
-      USDT: {
-        wallet: usdtWallet ? formatBalance(usdtWallet.value, SUPPORTED_TOKENS.USDT.decimals) : '0',
-        meshpay: usdtMeshPay ? formatBalance(usdtMeshPay as bigint, SUPPORTED_TOKENS.USDT.decimals) : '0',
-        total: '0', // Will be calculated below
-      },
-      USDC: {
-        wallet: usdcWallet ? formatBalance(usdcWallet.value, SUPPORTED_TOKENS.USDC.decimals) : '0',
-        meshpay: usdcMeshPay ? formatBalance(usdcMeshPay as bigint, SUPPORTED_TOKENS.USDC.decimals) : '0',
-        total: '0', // Will be calculated below
-      },
-    };
-
-    // Calculate totals
-    balances.XTZ.total = (parseFloat(balances.XTZ.wallet) + parseFloat(balances.XTZ.meshpay)).toFixed(6);
-    balances.WTZ.total = (parseFloat(balances.WTZ.wallet) + parseFloat(balances.WTZ.meshpay)).toFixed(6);
-    balances.USDT.total = (parseFloat(balances.USDT.wallet) + parseFloat(balances.USDT.meshpay)).toFixed(6);
-    balances.USDC.total = (parseFloat(balances.USDC.wallet) + parseFloat(balances.USDC.meshpay)).toFixed(6);
-
-    return { balances, isLoading: false, error: null };
-  } catch (err) {
-    return { balances: null, isLoading: false, error: `Failed to load balances: ${err}` };
-  }
-}
 
 /**
- * Complete deposit workflow (approve + deposit for ERC20, direct deposit for XTZ)
+ * Hook to handle complete deposit workflow with approval check
  */
-export async function performDeposit(
-  tokenSymbol: TokenSymbol,
-  amount: string,
-  approveToken?: (token: Exclude<TokenSymbol, 'XTZ'>, amount: string) => Promise<void>,
-  deposit?: (token: Exclude<TokenSymbol, 'XTZ'>, amount: string) => Promise<void>,
-  depositNative?: (amount: string) => Promise<void>
-): Promise<DepositResult> {
-  try {
+export function useDepositFlow() {
+  const { 
+    approveToken, 
+    isPending: isApprovePending, 
+    isConfirmed: isApproveSuccess,
+    error: approveError 
+  } = useApproveToken();
+  
+  const { 
+    deposit, 
+    isPending: isDepositPending, 
+    isConfirmed: isDepositSuccess,
+    error: depositError 
+  } = useDepositToMeshPay();
+  
+  const { 
+    depositNative, 
+    isPending: isNativeDepositPending, 
+    isConfirmed: isNativeDepositSuccess,
+    error: nativeDepositError 
+  } = useDepositNativeToMeshPay();
+
+  // Auto-deposit after approval success
+  const [pendingDeposit, setPendingDeposit] = useState<{token: TokenSymbol, amount: string} | null>(null);
+  const [currentToken, setCurrentToken] = useState<TokenSymbol>('XTZ');
+
+  useEffect(() => {
+    if (isApproveSuccess && pendingDeposit) {
+      try {
+        deposit(pendingDeposit.token as Exclude<TokenSymbol, 'XTZ'>, pendingDeposit.amount);
+        setPendingDeposit(null);
+      } catch (error) {
+        console.error("Error initiating deposit after approval:", error);
+        setPendingDeposit(null);
+      }
+    }
+  }, [isApproveSuccess, pendingDeposit]);
+
+  // Get allowance for current non-native token
+  const allowanceQuery = useTokenAllowance(
+    currentToken !== 'XTZ' ? (currentToken as Exclude<TokenSymbol, 'XTZ'>) : 'WTZ' 
+  );
+
+  const initiateDeposit = async (tokenSymbol: TokenSymbol, amount: string) => {
+    setCurrentToken(tokenSymbol);
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
-
+    
     if (tokenConfig.isNative) {
-      // Native XTZ deposit
-      if (!depositNative) {
-        throw new Error('Native deposit function not provided');
-      }
       await depositNative(amount);
-    } else {
-      // ERC20 token deposit
-      if (!approveToken || !deposit) {
-        throw new Error('ERC20 deposit functions not provided');
-      }
-      
-      // Step 1: Approve token spending
-      await approveToken(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
-
-      // Step 2: Deposit to MeshPay
-      await deposit(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
+      return;
     }
 
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-  }
+    // Check allowance for ERC20
+    const parsedAmount = parseUnits(amount, tokenConfig.decimals);
+    const currentAllowance = (tokenSymbol === currentToken ? allowanceQuery.data : BigInt(0)) || BigInt(0);
+
+    if (currentAllowance < parsedAmount) {
+      // Set pending deposit for after approval
+      setPendingDeposit({ token: tokenSymbol, amount });
+      await approveToken(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
+    } else {
+      // Direct deposit
+      await deposit(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
+    }
+  };
+
+  return {
+    initiateDeposit,
+    isLoading: isApprovePending || isDepositPending || isNativeDepositPending,
+    isApprovePending,
+    isDepositPending: isDepositPending || isNativeDepositPending,
+    isSuccess: isDepositSuccess || isNativeDepositSuccess,
+    isApproveSuccess,
+    error: approveError || depositError || nativeDepositError,
+  };
 } 

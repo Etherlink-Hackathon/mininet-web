@@ -149,7 +149,7 @@ class BlockchainClient:
         for token_symbol, token_config in SUPPORTED_TOKENS.items():
             try:
                 token_address = token_config['address']
-                decimals = token_config['decimals']
+                decimals = token_config['decimals'] if token_config['is_native'] else 0
                 
                 # Initialize balances
                 wallet_balance = "0"
