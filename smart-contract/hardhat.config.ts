@@ -77,7 +77,7 @@ const config: HardhatUserConfig = {
     disambiguatePaths: false,
     runOnCompile: true,
     strict: true,
-    only: ["FastPay"],
+    only: ["SmartPay"],
   },
   typechain: {
     outDir: "typechain-types",

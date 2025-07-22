@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-Phase 1 of the Mesh Network Discovery and Communication Bridge has been successfully implemented according to the PLAN.MD specifications. This implementation enables seamless communication between the mininet-web frontend/backend and FastPay authorities running in IEEE 802.11s mesh networks through a dedicated internet gateway.
+Phase 1 of the Mesh Network Discovery and Communication Bridge has been successfully implemented according to the PLAN.MD specifications. This implementation enables seamless communication between the mininet-web frontend/backend and SmartPay authorities running in IEEE 802.11s mesh networks through a dedicated internet gateway.
 
 ## 🎯 Completed Components
 
@@ -147,7 +147,7 @@ python scripts/test_mesh_gateway.py
 │  Internet/WAN   │ ◄──────────────► │ MeshInternetBridge │
 └─────────────────┘                 └──────────────────┘
                                               │
-                                              │ TCP/FastPay
+                                              │ TCP/SmartPay
                                               ▼
                                     ┌──────────────────┐
                                     │  IEEE 802.11s    │

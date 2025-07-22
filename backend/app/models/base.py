@@ -1,6 +1,6 @@
 """Base data models for the Etherlink Offline Payment API.
 
-This module contains Pydantic models that mirror the FastPay data structures
+This module contains Pydantic models that mirror the SmartPay data structures
 from the mininet-wifi implementation, adapted for the web API.
 """
 
@@ -130,7 +130,7 @@ class ShardInfo(BaseApiModel):
 
 
 class AuthorityInfo(BaseApiModel):
-    """Information about a FastPay authority."""
+    """Information about a SmartPay authority."""
     name: str = Field(..., description="Authority name")
     address: Address = Field(..., description="Network address")
     position: Optional[Position] = Field(None, description="Geographic position")

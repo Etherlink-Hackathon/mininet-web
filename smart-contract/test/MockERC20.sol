@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title MockERC20
- * @dev Simple ERC20 token for testing FastPay functionality
+ * @dev Simple ERC20 token for testing SmartPay functionality
  */
 contract MockERC20 is ERC20 {
     /**

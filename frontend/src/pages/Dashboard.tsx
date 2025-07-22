@@ -278,7 +278,7 @@ const Dashboard: React.FC = () => {
                         }
                       }}
                     >
-                      Deposit to FastPay
+                      Deposit to SmartPay
                     </Button>
                     <Button
                       variant="outlined"

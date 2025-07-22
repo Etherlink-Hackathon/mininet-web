@@ -200,7 +200,7 @@ const Authority: React.FC = () => {
       addLog('info', 'mesh', 'Initializing IEEE 802.11s mesh interface...');
       
       await new Promise(resolve => setTimeout(resolve, 1500));
-      addLog('info', 'network', 'Configuring FastPay authority protocol...');
+      addLog('info', 'network', 'Configuring SmartPay authority protocol...');
       
       await new Promise(resolve => setTimeout(resolve, 1000));
       addLog('success', 'mesh', 'Mesh network started successfully');
@@ -294,7 +294,7 @@ const Authority: React.FC = () => {
           Become an Authority
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Lock tokens to become a FastPay authority and earn rewards by processing offline transactions
+          Lock tokens to become a SmartPay authority and earn rewards by processing offline transactions
         </Typography>
       </Box>
 
@@ -748,7 +748,7 @@ const Authority: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 3 }}>
-            Lock XTZ tokens to become a FastPay authority. Your tokens will be locked for the specified duration and you'll earn rewards for processing transactions.
+            Lock XTZ tokens to become a SmartPay authority. Your tokens will be locked for the specified duration and you'll earn rewards for processing transactions.
           </Alert>
           
           <TextField

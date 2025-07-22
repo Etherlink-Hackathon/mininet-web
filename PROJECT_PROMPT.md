@@ -2,14 +2,14 @@
 
 ## Project Overview
 
-You are working on **mininet-web**, a comprehensive **offline payment web application** designed for the **Etherlink Summer Camp**. This is a production-ready system that enables **offline stablecoin payments** (USDT/USDC) without internet connectivity by interfacing with a FastPay authority network running on `mininet-wifi`.
+You are working on **mininet-web**, a comprehensive **offline payment web application** designed for the **Etherlink Summer Camp**. This is a production-ready system that enables **offline stablecoin payments** (USDT/USDC) without internet connectivity by interfacing with a SmartPay authority network running on `mininet-wifi`.
 
 ## Project Context & Goals
 
 ### Core Mission
 Create a beautiful, intuitive web application that demonstrates **offline blockchain payments** using:
 - **Etherlink** (EVM Layer 2 on Tezos) for final settlement
-- **FastPay protocol** (Facebook/Meta research) for offline consensus  
+- **SmartPay protocol** (Facebook/Meta research) for offline consensus  
 - **mininet-wifi** infrastructure for local authority networks
 - **React + FastAPI** for modern web interface
 
@@ -19,7 +19,7 @@ This system enables **real offline payments** where users can send USDT/USDC tra
 ## Architecture Overview
 
 ```
-Frontend (React)           Backend (FastAPI)         FastPay Network        Etherlink Blockchain
+Frontend (React)           Backend (FastAPI)         SmartPay Network        Etherlink Blockchain
 ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐     ┌─────────────────┐
 │ • Interactive   │◄─────►│ • Authority     │◄─────►│ • WiFi          │◄───►│ • Smart         │
 │   Network Map   │       │   Client (TCP)  │       │   Authorities   │     │   Contracts     │
@@ -27,7 +27,7 @@ Frontend (React)           Backend (FastAPI)         FastPay Network        Ethe
 │ • Certificate   │       │   API           │       │   Consensus     │     │   Settlement    │
 │   Viewer        │       │ • WebSocket     │       │ • P2P Network   │     │ • Token Vaults  │
 │ • Real-time     │       │   Updates       │       │ • Offline       │     │ • Authority     │
-│   Dashboard     │       │ • FastPay       │       │   Capability    │     │   Management    │
+│   Dashboard     │       │ • SmartPay       │       │   Capability    │     │   Management    │
 └─────────────────┘       │   Protocol      │       └─────────────────┘     └─────────────────┘
                           └─────────────────┘
 ```
@@ -44,15 +44,15 @@ Frontend (React)           Backend (FastAPI)         FastPay Network        Ethe
 
 ### Backend  
 - **FastAPI** with Python 3.9+
-- **TCP client** for FastPay authority communication
+- **TCP client** for SmartPay authority communication
 - **WebSocket** for real-time frontend updates
-- **Pydantic** models matching FastPay protocol
+- **Pydantic** models matching SmartPay protocol
 - **Authority discovery** on `10.0.0.0/8` network
 - **Docker** for containerization
 
 ### Smart Contracts
 - **Solidity** contracts for Etherlink deployment
-- **FastPay MVP** implementation (based on Facebook research)
+- **SmartPay MVP** implementation (based on Facebook research)
 - **Foundry** for development and testing
 - **OpenZeppelin** for security standards
 - **Multi-token support** (USDT, USDC)
@@ -60,13 +60,13 @@ Frontend (React)           Backend (FastAPI)         FastPay Network        Ethe
 ### Infrastructure
 - **mininet-wifi** for WiFi authority networks
 - **Docker Compose** for development environment
-- **FastPay protocol** for offline consensus
+- **SmartPay protocol** for offline consensus
 - **Etherlink** for final blockchain settlement
 
 ## Core Features & Components
 
 ### 1. Interactive Network Map
-- **Real-time visualization** of nearby FastPay authorities
+- **Real-time visualization** of nearby SmartPay authorities
 - **Geographic positioning** with status indicators
 - **Authority details** on click (shard info, connectivity)  
 - **Network health monitoring** with live updates
@@ -84,7 +84,7 @@ Frontend (React)           Backend (FastAPI)         FastPay Network        Ethe
 - **Export/share capabilities** for verification
 
 ### 4. Smart Contract Integration
-- **FastPay MVP contract** aligned with original Facebook research
+- **SmartPay MVP contract** aligned with original Facebook research
 - **Account registration** and token funding
 - **Transfer certificate** creation and redemption
 - **Sequence number validation** for replay protection
@@ -122,7 +122,7 @@ mininet-web/
 │   │   ├── core/
 │   │   │   └── config.py        # Configuration management
 │   │   ├── models/
-│   │   │   └── base.py          # Pydantic models (FastPay types)
+│   │   │   └── base.py          # Pydantic models (SmartPay types)
 │   │   ├── services/
 │   │   │   └── authority_client.py # TCP client for authorities
 │   │   └── api/v1/
@@ -137,9 +137,9 @@ mininet-web/
 │
 └── smart-contract/               # Etherlink Smart Contracts
     ├── contracts/
-    │   └── FastPayMVP.sol       # Main FastPay implementation
+    │   └── SmartPayMVP.sol       # Main SmartPay implementation
     ├── test/
-    │   └── FastPayMVP.t.sol     # Comprehensive tests
+    │   └── SmartPayMVP.t.sol     # Comprehensive tests
     ├── script/
     │   └── DeployMVP.s.sol      # Deployment script
     ├── scripts/                 # Cross-platform automation
@@ -147,14 +147,14 @@ mininet-web/
     │   ├── test.sh/.ps1         # Run tests
     │   └── deploy.sh/.ps1       # Deploy contracts
     ├── foundry.toml             # Foundry configuration
-    └── GETTING_STARTED.md       # FastPay tutorial
+    └── GETTING_STARTED.md       # SmartPay tutorial
 ```
 
-## FastPay Protocol Integration
+## SmartPay Protocol Integration
 
 ### Authority Discovery
 - **Network scanning** on `10.0.0.0/8` for authorities at port `8080`
-- **TCP communication** using FastPay protocol messages
+- **TCP communication** using SmartPay protocol messages
 - **Real-time status monitoring** of authority availability
 
 ### Protocol Messages
@@ -171,20 +171,20 @@ mininet-web/
 
 ## Smart Contract Architecture
 
-### FastPay MVP Contract
+### SmartPay MVP Contract
 ```solidity
-// Core FastPay operations (following original Facebook research)
-registerAccount()                                    // FastPay account registration
-handleFundingTransaction(token, amount)              // Primary → FastPay funding  
+// Core SmartPay operations (following original Facebook research)
+registerAccount()                                    // SmartPay account registration
+handleFundingTransaction(token, amount)              // Primary → SmartPay funding  
 createTransferCertificate(recipient, token, amount, sequenceNumber) // Off-chain certificate
-handleRedeemTransaction(redeemTransaction)           // FastPay → Primary settlement
+handleRedeemTransaction(redeemTransaction)           // SmartPay → Primary settlement
 ```
 
 ### Key Features
 - **Account management** with free registration
-- **Token funding** (Primary blockchain → FastPay system)
+- **Token funding** (Primary blockchain → SmartPay system)
 - **Certificate creation** for off-chain payments
-- **Redemption processing** (FastPay → Primary settlement)
+- **Redemption processing** (SmartPay → Primary settlement)
 - **Sequence validation** preventing replay attacks
 - **Multi-token support** (any ERC20)
 
@@ -214,7 +214,7 @@ cd smart-contract
 # Setup (installs Foundry if needed)
 ./scripts/setup.sh
 
-# Test FastPay implementation
+# Test SmartPay implementation
 ./scripts/test.sh
 
 # Deploy to Etherlink testnet
@@ -223,7 +223,7 @@ cd smart-contract
 
 ### Integration Testing
 - **Local authority network** via mininet-wifi
-- **Mock FastPay authorities** for development
+- **Mock SmartPay authorities** for development
 - **End-to-end payment flows** with certificate verification
 - **Real-time updates** through WebSocket connections
 
@@ -249,9 +249,9 @@ cd smart-contract
 
 ## Integration Points
 
-### With Existing FastPay Network
+### With Existing SmartPay Network
 - **Authority auto-discovery** on local network
-- **Protocol message translation** between web API and FastPay
+- **Protocol message translation** between web API and SmartPay
 - **Certificate verification** using existing infrastructure
 - **Committee consensus** through established authorities
 
@@ -321,9 +321,9 @@ cd smart-contract
 
 When working on this project:
 
-1. **Understand the Context**: This is a complex integration of multiple technologies (React, FastAPI, FastPay protocol, Etherlink blockchain) for offline payments.
+1. **Understand the Context**: This is a complex integration of multiple technologies (React, FastAPI, SmartPay protocol, Etherlink blockchain) for offline payments.
 
-2. **Maintain Architecture**: Respect the separation between frontend, backend, smart contracts, and FastPay network layers.
+2. **Maintain Architecture**: Respect the separation between frontend, backend, smart contracts, and SmartPay network layers.
 
 3. **Follow Conventions**: Use TypeScript for frontend, Python type hints for backend, and comprehensive Solidity documentation.
 

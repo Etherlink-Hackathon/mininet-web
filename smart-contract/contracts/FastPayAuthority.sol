@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title FastPayAuthorityManager
- * @dev Authority staking and rewards management for FastPay network
- * Companion contract to FastPayMVP for authority operations
- * @author FastPay Team
+ * @title SmartPayAuthorityManager
+ * @dev Authority staking and rewards management for SmartPay network
+ * Companion contract to SmartPayMVP for authority operations
+ * @author SmartPay Team
  */
-contract FastPayAuthorityManager is ReentrancyGuard, Ownable {
+contract SmartPayAuthorityManager is ReentrancyGuard, Ownable {
 
     /// @dev Authority information and staking
     struct AuthorityInfo {
@@ -83,7 +83,7 @@ contract FastPayAuthorityManager is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @dev Stake tokens to become a FastPay authority
+     * @dev Stake tokens to become a SmartPay authority
      * @param lockDuration Duration to lock the stake (in seconds)
      * @param networkInfo JSON string with network configuration
      */

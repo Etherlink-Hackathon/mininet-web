@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """send_mesh_transfer.py
 
-A command-line utility for submitting a FastPay transfer request directly to a
+A command-line utility for submitting a SmartPay transfer request directly to a
 MeshInternetBridge gateway, bypassing the backend API layer.
 
 Usage:
@@ -38,11 +38,11 @@ def _parse_args() -> Namespace:
     argparse.Namespace
         Parsed CLI arguments.
     """
-    parser = ArgumentParser(description="Send FastPay transfer via mesh gateway")
+    parser = ArgumentParser(description="Send SmartPay transfer via mesh gateway")
     parser.add_argument(
         "--authority",
         required=True,
-        help="Name of the FastPay authority (e.g., auth1)",
+        help="Name of the SmartPay authority (e.g., auth1)",
     )
     parser.add_argument(
         "--sender",

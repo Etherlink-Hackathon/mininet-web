@@ -1,9 +1,9 @@
 import { ethers, network } from "hardhat";
-import { FastPayMVP, FastPayAuthorityManager } from "../typechain-types";
+import { SmartPayMVP, SmartPayAuthorityManager } from "../typechain-types";
 
 async function main(): Promise<void> {
   console.log("========================================");
-  console.log("FastPay MVP Deployment");
+  console.log("SmartPay MVP Deployment");
   console.log("========================================");
 
   const [deployer] = await ethers.getSigners();
@@ -13,23 +13,23 @@ async function main(): Promise<void> {
   console.log("Network:", network.name);
   console.log("Chain ID:", network.config.chainId);
 
-  // Deploy FastPay MVP contract
-  console.log("\nDeploying FastPay MVP contract...");
-  const FastPayMVPFactory = await ethers.getContractFactory("FastPayMVP");
-  const fastPay: FastPayMVP = await FastPayMVPFactory.deploy();
+  // Deploy SmartPay MVP contract
+  console.log("\nDeploying SmartPay MVP contract...");
+  const SmartPayMVPFactory = await ethers.getContractFactory("SmartPayMVP");
+  const fastPay: SmartPayMVP = await SmartPayMVPFactory.deploy();
   await fastPay.waitForDeployment();
 
   const fastPayAddress = await fastPay.getAddress();
-  console.log("FastPay MVP deployed to:", fastPayAddress);
+  console.log("SmartPay MVP deployed to:", fastPayAddress);
 
-  // Deploy FastPay Authority Manager contract
-  console.log("\nDeploying FastPay Authority Manager contract...");
-  const FastPayAuthorityManagerFactory = await ethers.getContractFactory("FastPayAuthorityManager");
-  const authorityManager: FastPayAuthorityManager = await FastPayAuthorityManagerFactory.deploy();
+  // Deploy SmartPay Authority Manager contract
+  console.log("\nDeploying SmartPay Authority Manager contract...");
+  const SmartPayAuthorityManagerFactory = await ethers.getContractFactory("SmartPayAuthorityManager");
+  const authorityManager: SmartPayAuthorityManager = await SmartPayAuthorityManagerFactory.deploy();
   await authorityManager.waitForDeployment();
 
   const authorityManagerAddress = await authorityManager.getAddress();
-  console.log("FastPay Authority Manager deployed to:", authorityManagerAddress);
+  console.log("SmartPay Authority Manager deployed to:", authorityManagerAddress);
 
   // Get initial contract state
   const totalAccounts = await fastPay.totalAccounts();
@@ -38,7 +38,7 @@ async function main(): Promise<void> {
   console.log("========================================");
   console.log("Deployment Successful!");
   console.log("========================================");
-  console.log("FastPay MVP Contract:", fastPayAddress);
+  console.log("SmartPay MVP Contract:", fastPayAddress);
   console.log("Authority Manager Contract:", authorityManagerAddress);
   console.log("Total Accounts:", totalAccounts.toString());
   console.log("Last Transaction Index:", lastTransactionIndex.toString());
@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   console.log("3. Create certificates with: fastPay.createTransferCertificate(...)");
   console.log("4. Redeem transfers with: fastPay.handleRedeemTransaction(...)");
   console.log("");
-  console.log("FastPay System ready for offline payments!");
+  console.log("SmartPay System ready for offline payments!");
   console.log("========================================");
 
   // Save deployment addresses to a file for easy access
@@ -62,8 +62,8 @@ async function main(): Promise<void> {
     chainId: network.config.chainId,
     deployer: deployer.address,
     contracts: {
-      FastPayMVP: fastPayAddress,
-      FastPayAuthorityManager: authorityManagerAddress,
+      SmartPayMVP: fastPayAddress,
+      SmartPayAuthorityManager: authorityManagerAddress,
     },
     timestamp: new Date().toISOString(),
   };

@@ -1,6 +1,6 @@
-# FastPay Smart Contracts (Hardhat)
+# SmartPay Smart Contracts (Hardhat)
 
-A minimal-viable implementation of Facebook/Meta **FastPay** adapted for the Etherlink (EVM) rollup.
+A minimal-viable implementation of Facebook/Meta **SmartPay** adapted for the Etherlink (EVM) rollup.
 
 This folder now uses **Hardhat + TypeScript** (no more Foundry) for development, testing and deployment.
 
@@ -63,8 +63,8 @@ ETHERSCAN_API_KEY=YOUR_EXPLORER_KEY   # optional verification
 
 ## 4. Contract Overview
 
-* **FastPayMVP.sol**  — core FastPay logic (account registration, funding, certificates, redemption).
-* **FastPayAuthorityManager.sol** — authority registry (optional helper).
+* **SmartPayMVP.sol**  — core SmartPay logic (account registration, funding, certificates, redemption).
+* **SmartPayAuthorityManager.sol** — authority registry (optional helper).
 * **MockERC20.sol** (tests) — simple ERC-20.
 
 All contracts are in `contracts/` and are compiled with IR-optimiser (200 runs).

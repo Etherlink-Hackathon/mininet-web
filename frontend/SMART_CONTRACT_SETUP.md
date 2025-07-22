@@ -1,10 +1,10 @@
-# FastPay Smart Contract Integration Setup
+# SmartPay Smart Contract Integration Setup
 
-This guide will help you configure the frontend to connect with your deployed FastPay smart contracts on Etherlink.
+This guide will help you configure the frontend to connect with your deployed SmartPay smart contracts on Etherlink.
 
 ## Prerequisites
 
-1. **Deploy FastPay Contract**: First, deploy the `FastPayMVP.sol` contract to Etherlink testnet or mainnet using the smart-contract directory.
+1. **Deploy SmartPay Contract**: First, deploy the `SmartPayMVP.sol` contract to Etherlink testnet or mainnet using the smart-contract directory.
 2. **Get Token Addresses**: Obtain the USDT and USDC contract addresses on Etherlink.
 3. **Privy Account**: Sign up at [https://console.privy.io/](https://console.privy.io/) to get your App ID.
 
@@ -33,7 +33,7 @@ VITE_USDC_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
 
 ## Contract Deployment Steps
 
-### 1. Deploy FastPay Contract
+### 1. Deploy SmartPay Contract
 
 ```bash
 cd smart-contract
@@ -44,7 +44,7 @@ cd smart-contract
 
 ### 2. Get Contract Address
 
-After deployment, copy the FastPay contract address from the deployment output and update your `.env.local` file.
+After deployment, copy the SmartPay contract address from the deployment output and update your `.env.local` file.
 
 ### 3. Find Token Addresses
 
@@ -68,23 +68,23 @@ Once configured, users can:
 - Connect using Privy (email, SMS, or external wallet)
 - Automatically detects Etherlink network
 
-### 2. **Register with FastPay**
-- One-time registration with the FastPay system
+### 2. **Register with SmartPay**
+- One-time registration with the SmartPay system
 - Free transaction to register account
 
 ### 3. **View Balances**
 - **Wallet Balance**: Regular USDT/USDC in user's wallet
-- **FastPay Balance**: Tokens deposited into FastPay system
+- **SmartPay Balance**: Tokens deposited into SmartPay system
 - **Total Balance**: Combined balance across both systems
 
-### 4. **Deposit to FastPay**
+### 4. **Deposit to SmartPay**
 - Two-step process: Approve + Deposit
-- Moves tokens from wallet to FastPay system
+- Moves tokens from wallet to SmartPay system
 - Enables offline payments
 
 ### 5. **Make Offline Payments**
-- Use FastPay balance for offline transactions
-- Works through the existing FastPay network
+- Use SmartPay balance for offline transactions
+- Works through the existing SmartPay network
 - Transactions confirmed by committee consensus
 
 ## Development
@@ -110,7 +110,7 @@ The wallet page will be available at [http://localhost:3000/wallet](http://local
    - Configure Privy App ID correctly
    - Check browser wallet connections
 
-3. **"Register your account with FastPay"**
+3. **"Register your account with SmartPay"**
    - Click the Register button in the alert
    - Ensure wallet has enough XTZ for gas fees
 
@@ -127,12 +127,12 @@ The wallet page will be available at [http://localhost:3000/wallet](http://local
 
 ## Smart Contract Functions Used
 
-The frontend integrates with these FastPay contract functions:
+The frontend integrates with these SmartPay contract functions:
 
-- `registerAccount()` - Register with FastPay system
+- `registerAccount()` - Register with SmartPay system
 - `isAccountRegistered(address)` - Check registration status  
-- `getAccountBalance(address, token)` - Get FastPay balance
-- `handleFundingTransaction(token, amount)` - Deposit to FastPay
+- `getAccountBalance(address, token)` - Get SmartPay balance
+- `handleFundingTransaction(token, amount)` - Deposit to SmartPay
 - `createTransferCertificate(...)` - Create offline payment certificate
 
 ## Security Notes
@@ -140,6 +140,6 @@ The frontend integrates with these FastPay contract functions:
 - Contract addresses are stored in environment variables
 - Private keys managed by Privy or user's wallet
 - All transactions require user approval
-- FastPay system provides additional security through committee consensus
+- SmartPay system provides additional security through committee consensus
 
 For more information, see the smart contract documentation in `../smart-contract/GETTING_STARTED.md`. 
