@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     fastpay_authority_contract_address: Optional[str] = Field(None, alias="FASTPAY_AUTHORITY_CONTRACT_ADDRESS")
     usdt_contract_address: Optional[str] = Field(None, alias="USDT_CONTRACT_ADDRESS")
     usdc_contract_address: Optional[str] = Field(None, alias="USDC_CONTRACT_ADDRESS")
-    
+    wtz_contract_address: Optional[str] = Field(None, alias="WTZ_CONTRACT_ADDRESS")
+
     # Blockchain Configuration
     rpc_url: str = os.getenv("RPC_URL", "https://node.ghostnet.etherlink.com")
     chain_id: int = os.getenv("CHAIN_ID", 128123)
@@ -50,7 +51,7 @@ class Settings(BaseSettings):
     ws_max_connections: int = os.getenv("WS_MAX_CONNECTIONS", 100)
     
     # Token Configuration
-    supported_tokens: List[str] = os.getenv("SUPPORTED_TOKENS", ["XTZ", "USDT", "USDC"])
+    supported_tokens: List[str] = os.getenv("SUPPORTED_TOKENS", ["XTZ", "WTZ", "USDT", "USDC"])
     default_token: str = os.getenv("DEFAULT_TOKEN", "USDT")
     max_transaction_amount: int = os.getenv("MAX_TRANSACTION_AMOUNT", 10000000)
     min_transaction_amount: int = os.getenv("MIN_TRANSACTION_AMOUNT", 1)
@@ -102,7 +103,7 @@ class Settings(BaseSettings):
     mesh_timeout: float = os.getenv("MESH_TIMEOUT", 10.0)
     
     @field_validator('fastpay_contract_address', 'fastpay_authority_contract_address', 
-             'usdt_contract_address', 'usdc_contract_address')
+             'usdt_contract_address', 'usdc_contract_address', 'wtz_contract_address')
     @classmethod
     def validate_contract_address(cls, v):
         """Validate contract addresses are proper Ethereum addresses."""
@@ -136,6 +137,13 @@ SUPPORTED_TOKENS = {
         'symbol': 'XTZ',
         'name': 'Tezos',
         'is_native': True,
+    },
+    'WTZ': {
+        'address': settings.wtz_contract_address,  # None if not configured
+        'decimals': 18,
+        'symbol': 'WTZ',
+        'name': 'Wrapped Tezos',
+        'is_native': False,
     },
     'USDT': {
         'address': settings.usdt_contract_address,  # None if not configured

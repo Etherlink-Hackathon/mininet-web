@@ -25,6 +25,7 @@ export interface TokenBalance {
 
 export interface MeshPayBalance {
   XTZ: TokenBalance;
+  WTZ: TokenBalance;
   USDT: TokenBalance;
   USDC: TokenBalance;
 }
@@ -339,11 +340,13 @@ export function useCombinedBalances(): {
 } {
   // Regular wallet balances
   const { data: xtzWallet, isLoading: xtzWalletLoading } = useTokenBalance('XTZ');
+  const { data: wtzWallet, isLoading: wtzWalletLoading } = useTokenBalance('WTZ');
   const { data: usdtWallet, isLoading: usdtWalletLoading } = useTokenBalance('USDT');
   const { data: usdcWallet, isLoading: usdcWalletLoading } = useTokenBalance('USDC');
   
   // MeshPay balances
   const { data: xtzMeshPay, isLoading: xtzMeshPayLoading } = useMeshPayBalance('XTZ');
+  const { data: wtzMeshPay, isLoading: wtzMeshPayLoading } = useMeshPayBalance('WTZ');
   const { data: usdtMeshPay, isLoading: usdtMeshPayLoading } = useMeshPayBalance('USDT');
   const { data: usdcMeshPay, isLoading: usdcMeshPayLoading } = useMeshPayBalance('USDC');
 
@@ -361,6 +364,11 @@ export function useCombinedBalances(): {
         fastpay: xtzMeshPay ? formatBalance(xtzMeshPay as bigint, SUPPORTED_TOKENS.XTZ.decimals) : '0',
         total: '0', // Will be calculated below
       },
+      WTZ: {
+        wallet: wtzWallet ? formatBalance(wtzWallet.value, SUPPORTED_TOKENS.WTZ.decimals) : '0',
+        fastpay: wtzMeshPay ? formatBalance(wtzMeshPay as bigint, SUPPORTED_TOKENS.WTZ.decimals) : '0',
+        total: '0', // Will be calculated below
+      },
       USDT: {
         wallet: usdtWallet ? formatBalance(usdtWallet.value, SUPPORTED_TOKENS.USDT.decimals) : '0',
         fastpay: usdtMeshPay ? formatBalance(usdtMeshPay as bigint, SUPPORTED_TOKENS.USDT.decimals) : '0',
@@ -375,6 +383,7 @@ export function useCombinedBalances(): {
 
     // Calculate totals
     balances.XTZ.total = (parseFloat(balances.XTZ.wallet) + parseFloat(balances.XTZ.fastpay)).toFixed(6);
+    balances.WTZ.total = (parseFloat(balances.WTZ.wallet) + parseFloat(balances.WTZ.fastpay)).toFixed(6);
     balances.USDT.total = (parseFloat(balances.USDT.wallet) + parseFloat(balances.USDT.fastpay)).toFixed(6);
     balances.USDC.total = (parseFloat(balances.USDC.wallet) + parseFloat(balances.USDC.fastpay)).toFixed(6);
 

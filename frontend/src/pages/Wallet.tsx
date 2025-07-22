@@ -29,6 +29,7 @@ import {
   Error as ErrorIcon,
 } from '@mui/icons-material';
 import { useAccount, useConnect } from 'wagmi';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useWalletContext } from '../context/WalletContext';
 import DepositModal from '../components/DepositModal';
 import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
@@ -38,6 +39,10 @@ import { TransactionRecord } from '../types/api';
 const Wallet: React.FC = () => {
   const { isConnected, address } = useAccount();
   const { connect, connectors } = useConnect();
+  const { wallets } = useWallets();
+  // Get wallet info
+  const primaryWallet = wallets[0];
+  const walletAddress = primaryWallet?.address;
   
   const {
     accountInfo,
@@ -91,7 +96,7 @@ const Wallet: React.FC = () => {
     );
   };
 
-  if (!address) {
+  if (!walletAddress) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box textAlign="center">
@@ -199,7 +204,7 @@ const Wallet: React.FC = () => {
       </Grid>
 
       <Box mb={4}>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setDepositModalOpen(true)} disabled={!isConnected}>
+        <Button variant="contained" startIcon={<Add />} onClick={() => setDepositModalOpen(true)} disabled={!walletAddress}>
           Deposit to MeshPay
         </Button>
       </Box>

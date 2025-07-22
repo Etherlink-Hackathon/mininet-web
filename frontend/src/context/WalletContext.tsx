@@ -156,6 +156,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       const newBalances: MeshPayBalance = {
         XTZ: { wallet: '0', fastpay: '0', total: '0' },
+        WTZ: { wallet: '0', fastpay: '0', total: '0' },
         USDT: { wallet: '0', fastpay: '0', total: '0' },
         USDC: { wallet: '0', fastpay: '0', total: '0' },
       };

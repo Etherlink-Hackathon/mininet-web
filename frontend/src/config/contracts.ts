@@ -41,6 +41,14 @@ export const SUPPORTED_TOKENS = {
     isNative: true,
     icon: '/xtz.svg',
   },
+  WTZ: {
+    address: (import.meta.env.VITE_WTZ_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
+    decimals: 18,
+    symbol: 'WTZ',
+    name: 'Wrapped Tezos',
+    isNative: false,
+    icon: '/wtz.svg',
+  },
   USDT: {
     address: (import.meta.env.VITE_USDT_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
     decimals: 6,
@@ -98,6 +106,7 @@ export const CONTRACT_ADDRESSES = {
     tokens: {
       USDT: SUPPORTED_TOKENS.USDT.address,
       USDC: SUPPORTED_TOKENS.USDC.address,
+      WTZ: SUPPORTED_TOKENS.WTZ.address,
     },
   },
 } as const;
