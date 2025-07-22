@@ -26,12 +26,12 @@ class Settings(BaseSettings):
     allowed_headers: List[str] = os.getenv("ALLOWED_HEADERS", ["*"])
     
     # Smart Contract Configuration
-    fastpay_contract_address: Optional[str] = Field(None, alias="SMARTPAY_CONTRACT_ADDRESS")
-    fastpay_authority_contract_address: Optional[str] = Field(None, alias="FASTPAY_AUTHORITY_CONTRACT_ADDRESS")
-    usdt_contract_address: Optional[str] = Field(None, alias="USDT_CONTRACT_ADDRESS")
-    usdc_contract_address: Optional[str] = Field(None, alias="USDC_CONTRACT_ADDRESS")
-    wtz_contract_address: Optional[str] = Field(None, alias="WTZ_CONTRACT_ADDRESS")
-
+    meshpay_contract_address: Optional[str] = os.getenv("MESHPAY_CONTRACT_ADDRESS", None)
+    meshpay_authority_contract_address: Optional[str] = os.getenv("MESHPAY_AUTHORITY_CONTRACT_ADDRESS", None)
+    usdt_contract_address: Optional[str] = os.getenv("USDT_CONTRACT_ADDRESS", None)
+    usdc_contract_address: Optional[str] = os.getenv("USDC_CONTRACT_ADDRESS", None)
+    wtz_contract_address: Optional[str] = os.getenv("WTZ_CONTRACT_ADDRESS", None)
+    
     # Blockchain Configuration
     rpc_url: str = os.getenv("RPC_URL", "https://node.ghostnet.etherlink.com")
     chain_id: int = os.getenv("CHAIN_ID", 128123)
@@ -71,13 +71,13 @@ class Settings(BaseSettings):
     cache_ttl: int = os.getenv("CACHE_TTL", 300)
     
     # Database Configuration
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./fastpay.db")
+    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./meshpay.db")
     
     # Logging Configuration
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     log_format: str = os.getenv("LOG_FORMAT", "json")
     log_file_enabled: bool = os.getenv("LOG_FILE_ENABLED", False)
-    log_file_path: str = os.getenv("LOG_FILE_PATH", "./logs/fastpay.log")
+    log_file_path: str = os.getenv("LOG_FILE_PATH", "./logs/meshpay.log")
     
     # Security Configuration
     secret_key: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
@@ -102,8 +102,8 @@ class Settings(BaseSettings):
     mesh_bridge_url: str = os.getenv("MESH_BRIDGE_URL", "http://192.168.1.142:8080")
     mesh_timeout: float = os.getenv("MESH_TIMEOUT", 10.0)
     
-    @field_validator('fastpay_contract_address', 'fastpay_authority_contract_address', 
-             'usdt_contract_address', 'usdc_contract_address', 'wtz_contract_address')
+    @field_validator('meshpay_contract_address', 'meshpay_authority_contract_address', 
+             'usdt_contract_address', 'usdc_contract_address')
     @classmethod
     def validate_contract_address(cls, v):
         """Validate contract addresses are proper Ethereum addresses."""

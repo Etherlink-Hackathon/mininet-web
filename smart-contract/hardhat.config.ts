@@ -79,13 +79,7 @@ const config: HardhatUserConfig = {
     strict: true,
     only: ["MeshPay"],
   },
-  typechain: {
-    outDir: "typechain-types",
-    target: "ethers-v6",
-    alwaysGenerateOverloads: false,
-    externalArtifacts: ["externalArtifacts/*.json"],
-    dontOverrideCompile: false,
-  },
+
   paths: {
     sources: "./contracts",
     tests: "./test",

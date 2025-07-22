@@ -184,12 +184,12 @@ class BlockchainClient:
             logger.info(f"Connected to blockchain: {settings.chain_name} (Chain ID: {settings.chain_id})")
             
             # Initialize FastPay contract if address is configured
-            if settings.fastpay_contract_address:
+            if settings.meshpay_contract_address:
                 self.fastpay_contract = self.w3.eth.contract(
-                    address=Web3.to_checksum_address(settings.fastpay_contract_address),
+                    address=Web3.to_checksum_address(settings.meshpay_contract_address),
                     abi=FASTPAY_ABI
                 )
-                logger.info(f"FastPay contract initialized at {settings.fastpay_contract_address}")
+                logger.info(f"FastPay contract initialized at {settings.meshpay_contract_address}")
             
             # Initialize backend account if private key is provided
             if settings.backend_private_key:
