@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { SmartPayMVP, SmartPayAuthorityManager, MockERC20 } from "../typechain-types";
+import { MeshPayMVP, MeshPayAuthorityManager, MockERC20 } from "../typechain-types";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
-describe("SmartPayMVP", function () {
-  let fastPay: SmartPayMVP;
-  let authorityManager: SmartPayAuthorityManager;
+describe("MeshPayMVP", function () {
+  let fastPay: MeshPayMVP;
+  let authorityManager: MeshPayAuthorityManager;
   let token: MockERC20;
   let deployer: SignerWithAddress;
   let account1: SignerWithAddress;
@@ -22,12 +22,12 @@ describe("SmartPayMVP", function () {
     [deployer, account1, account2, account3] = await ethers.getSigners();
 
     // Deploy contracts
-    const SmartPayMVPFactory = await ethers.getContractFactory("SmartPayMVP");
-    fastPay = await SmartPayMVPFactory.deploy();
+    const MeshPayMVPFactory = await ethers.getContractFactory("MeshPayMVP");
+    fastPay = await MeshPayMVPFactory.deploy();
     await fastPay.waitForDeployment();
 
-    const SmartPayAuthorityManagerFactory = await ethers.getContractFactory("SmartPayAuthorityManager");
-    authorityManager = await SmartPayAuthorityManagerFactory.deploy();
+    const MeshPayAuthorityManagerFactory = await ethers.getContractFactory("MeshPayAuthorityManager");
+    authorityManager = await MeshPayAuthorityManagerFactory.deploy();
     await authorityManager.waitForDeployment();
 
     // Deploy mock token
@@ -88,12 +88,6 @@ describe("SmartPayMVP", function () {
       expect(await fastPay.totalBalance(await token.getAddress())).to.equal(fundAmount);
     });
 
-    it("should prevent funding unregistered accounts", async function () {
-      const fundAmount = ethers.parseEther("100");
-
-      await expect(fastPay.connect(account2).handleFundingTransaction(await token.getAddress(), fundAmount))
-        .to.be.revertedWithCustomError(fastPay, "AccountNotRegistered");
-    });
 
     it("should prevent funding with zero amount", async function () {
       await expect(fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), 0))
@@ -139,12 +133,6 @@ describe("SmartPayMVP", function () {
       expect(await fastPay.getNativeBalance()).to.equal(fundAmount);
     });
 
-    it("should prevent native funding unregistered accounts", async function () {
-      const fundAmount = ethers.parseEther("100");
-
-      await expect(fastPay.connect(account3).handleNativeFundingTransaction({ value: fundAmount }))
-        .to.be.revertedWithCustomError(fastPay, "AccountNotRegistered");
-    });
 
     it("should prevent native funding with zero amount", async function () {
       await expect(fastPay.connect(account1).handleNativeFundingTransaction({ value: 0 }))

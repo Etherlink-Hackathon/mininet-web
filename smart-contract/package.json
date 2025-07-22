@@ -1,7 +1,7 @@
 {
   "name": "fastpay-smart-contracts",
   "version": "1.0.0",
-  "description": "SmartPay smart contracts for offline payment processing on Etherlink",
+  "description": "MeshPay smart contracts for offline payment processing on Etherlink",
   "main": "index.js",
   "scripts": {
     "build": "npx hardhat compile",

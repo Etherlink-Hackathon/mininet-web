@@ -1,4 +1,4 @@
-"""Mesh network API endpoints for SmartPay mesh integration."""
+"""Mesh network API endpoints for MeshPay mesh integration."""
 
 from typing import Dict, List, Any
 from fastapi import APIRouter, HTTPException, Query

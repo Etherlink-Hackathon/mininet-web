@@ -107,7 +107,7 @@ const Dashboard: React.FC = () => {
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         }}>
-          SmartPay
+          MeshPay
         </Typography>
         <Box display="flex" gap={2}>
           <IconButton onClick={loadDashboardData} disabled={loading}>
@@ -278,7 +278,7 @@ const Dashboard: React.FC = () => {
                         }
                       }}
                     >
-                      Deposit to SmartPay
+                      Deposit to MeshPay
                     </Button>
                     <Button
                       variant="outlined"

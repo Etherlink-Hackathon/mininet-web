@@ -1,7 +1,7 @@
 """Etherlink Offline Payment Web Application Backend.
 
 This package contains the FastAPI backend server that interfaces with
-the SmartPay authority network running on mininet-wifi to enable offline
+the MeshPay authority network running on mininet-wifi to enable offline
 stablecoin payments.
 """
 

@@ -1,4 +1,4 @@
-"""WebSocket API endpoints for SmartPay."""
+"""WebSocket API endpoints for MeshPay."""
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import json
@@ -41,7 +41,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await manager.send_personal_message(
             json.dumps({
                 "type": "connection",
-                "message": "Connected to SmartPay WebSocket",
+                "message": "Connected to MeshPay WebSocket",
                 "timestamp": asyncio.get_event_loop().time()
             }),
             websocket

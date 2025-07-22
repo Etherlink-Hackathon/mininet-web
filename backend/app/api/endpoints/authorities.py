@@ -1,4 +1,4 @@
-"""Authorities API endpoints for SmartPay."""
+"""Authorities API endpoints for MeshPay."""
 
 from typing import Dict, List, Any
 from fastapi import APIRouter, HTTPException, Query

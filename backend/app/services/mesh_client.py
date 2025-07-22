@@ -1,4 +1,4 @@
-"""MeshClient – single source for communicating with SmartPay mesh authorities.  
+"""MeshClient – single source for communicating with MeshPay mesh authorities.  
 
 This small async wrapper around the Mininet-WiFi *gateway bridge* exposes just
 what the web backend needs:

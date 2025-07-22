@@ -281,10 +281,10 @@ class BlockchainClient:
                         logger.error(f"Failed to get {token_symbol} wallet balance for {address}: {e}")
                         wallet_balance = "0"
                 
-                # Get SmartPay balance (only if SmartPay contract is available)
+                # Get MeshPay balance (only if MeshPay contract is available)
                 if self.fastpay_contract:
                     try:
-                        # Use the correct token address for SmartPay contract
+                        # Use the correct token address for MeshPay contract
                         if token_config['is_native']:
                             # Use NATIVE_TOKEN address (0x0000000000000000000000000000000000000000) for XTZ
                             fastpay_token_address = '0x0000000000000000000000000000000000000000'
@@ -295,13 +295,13 @@ class BlockchainClient:
                             address, fastpay_token_address
                         ).call()
                         fastpay_balance = self._wei_to_human(fastpay_balance_wei, decimals)
-                        logger.info(f"Successfully got {token_symbol} SmartPay balance: {fastpay_balance}")
+                        logger.info(f"Successfully got {token_symbol} MeshPay balance: {fastpay_balance}")
                         
                     except Exception as e:
-                        logger.error(f"Failed to get {token_symbol} SmartPay balance for {address}: {e}")
+                        logger.error(f"Failed to get {token_symbol} MeshPay balance for {address}: {e}")
                         fastpay_balance = "0"
                 else:
-                    logger.warning("SmartPay contract not available, using 0 for SmartPay balances")
+                    logger.warning("MeshPay contract not available, using 0 for MeshPay balances")
                     fastpay_balance = "0"
                 
                 # Calculate total

@@ -34,9 +34,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
     accountInfo,
     balances,
     depositStatus,
-    registrationStatus,
-    depositToSmartPay,
-    registerAccount,
+    depositToMeshPay,
     clearErrors,
     fetchData,
   } = useWalletContext();
@@ -46,45 +44,18 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
   const [error, setError] = useState<string | null>(null);
 
   const getSteps = () => {
-    const steps = [];
-    if (!accountInfo?.isRegistered) {
-      steps.push('Register Account');
-    }
     if (token === 'XTZ') {
-      steps.push('Deposit to SmartPay', 'Completed');
-    } else {
-      steps.push('Approve Token', 'Deposit to SmartPay', 'Completed');
+      return ['Deposit to MeshPay', 'Completed'];
     }
-    return steps;
+    return ['Approve Token', 'Deposit to MeshPay', 'Completed'];
   };
 
   const getActiveStep = () => {
-    const steps = getSteps();
-    let stepIndex = 0;
-    
-    // Check registration step
-    if (!accountInfo?.isRegistered) {
-      if (registrationStatus.isPending) return stepIndex;
-      if (!registrationStatus.isComplete) return -1;
-      stepIndex++;
-    }
-    
-    // Handle deposit steps
-    if (token === 'XTZ') {
-      // Native XTZ flow (no approval needed)
-      switch (depositStatus.currentStep) {
-        case 'depositing': return stepIndex;
-        case 'completed': return stepIndex + 1;
-        default: return -1;
-      }
-    } else {
-      // ERC20 token flow (requires approval)
-      switch (depositStatus.currentStep) {
-        case 'approving': return stepIndex;
-        case 'depositing': return stepIndex + 1;
-        case 'completed': return stepIndex + 2;
-        default: return -1;
-      }
+    switch (depositStatus.currentStep) {
+      case 'approving': return 0;
+      case 'depositing': return 1;
+      case 'completed': return 2;
+      default: return -1;
     }
   };
 
@@ -105,24 +76,15 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
     if (!validateForm()) return;
     
     clearErrors();
-
-    if (!accountInfo?.isRegistered) {
-      const regResult = await registerAccount();
-      if (!regResult.success) {
-        // Error will be shown via registrationStatus from context
-        return;
-      }
-    }
     
-    const depResult = await depositToSmartPay(token, amount);
-    if (depResult.success) {
-      // Data is refreshed via useEffect in context
+    const result = await depositToMeshPay(token, amount);
+    if (result.success) {
       setAmount('');
     }
   };
   
   const handleClose = () => {
-    if (depositStatus.isPending || registrationStatus.isPending) return;
+    if (depositStatus.isPending) return;
     setAmount('');
     setError(null);
     clearErrors();
@@ -138,7 +100,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
     return SUPPORTED_TOKENS[tokenSymbol as keyof typeof SUPPORTED_TOKENS];
   };
 
-  const isTransactionPending = depositStatus.isPending || registrationStatus.isPending;
+  const isTransactionPending = depositStatus.isPending;
 
   return (
     <Dialog 
@@ -163,7 +125,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
         <Box display="flex" alignItems="center" gap={2}>
           <AccountBalanceWallet color="primary" />
           <Typography variant="h6" fontWeight={600}>
-            Deposit to SmartPay
+            Deposit to MeshPay
           </Typography>
         </Box>
       </DialogTitle>
@@ -208,7 +170,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
 
         {depositStatus.currentStep === 'completed' && (
           <Alert severity="success" sx={{ mb: 2 }}>
-            Deposit completed successfully! Your {getTokenConfig(token).symbol} is now available in SmartPay.
+            Deposit completed successfully! Your {getTokenConfig(token).symbol} is now available in MeshPay.
           </Alert>
         )}
 
@@ -268,7 +230,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <TrendingUp fontSize="small" />
-                    <Typography variant="body2">SmartPay:</Typography>
+                    <Typography variant="body2">MeshPay:</Typography>
                   </Box>
                   <Typography variant="body2" fontWeight="medium">
                     {formatBalance(balances[token].fastpay)}
@@ -281,13 +243,12 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
           )}
 
           <Typography variant="body2" color="text.secondary">
-            {!accountInfo?.isRegistered 
-              ? 'This will register your account with SmartPay and deposit tokens to enable offline payments. '
-              : 'Depositing tokens to SmartPay enables you to make offline payments. '
-            }
-            {token === 'XTZ' 
-              ? 'This requires one transaction to transfer XTZ to the SmartPay system.'
-              : 'This process requires two transactions: first approving the SmartPay contract to spend your tokens, then transferring them to the SmartPay system.'
+            {accountInfo && !accountInfo.isRegistered && (
+              "Your account will be automatically registered with your first deposit. "
+            )}
+            {token === 'XTZ'
+              ? 'This requires one transaction to transfer XTZ to the MeshPay system.'
+              : 'This process requires two transactions: first to approve the MeshPay contract, then to transfer the tokens.'
             }
           </Typography>
         </Box>
@@ -298,12 +259,12 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
           onClick={handleClose}
           disabled={isTransactionPending}
         >
-          {isTransactionPending ? 'Transaction in Progress...' : 'Cancel'}
+          {isTransactionPending ? 'In Progress...' : 'Cancel'}
         </Button>
         <Button
           variant="contained"
           onClick={handleDeposit}
-          disabled={isTransactionPending || !amount || parseFloat(amount) <= 0}
+          disabled={isTransactionPending || !amount}
           startIcon={isTransactionPending ? <CircularProgress size={16} /> : undefined}
           sx={{
             background: 'linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%)',
@@ -312,13 +273,9 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
             },
           }}
         >
-          {isTransactionPending 
-            ? (registrationStatus.isPending 
-                ? 'Registering Account...' 
-                : `${depositStatus.currentStep === 'approving' ? 'Approving...' : 'Depositing...'}`)
-            : (!accountInfo?.isRegistered 
-                ? `Deposit ${getTokenConfig(token).symbol}`
-                : `Deposit ${getTokenConfig(token).symbol}`)
+          {isTransactionPending
+            ? `${depositStatus.currentStep === 'approving' ? 'Approving...' : 'Depositing...'}`
+            : 'Deposit Now'
           }
         </Button>
       </DialogActions>

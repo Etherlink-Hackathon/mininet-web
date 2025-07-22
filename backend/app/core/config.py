@@ -1,5 +1,5 @@
 """
-Configuration management for SmartPay backend.
+Configuration management for MeshPay backend.
 """
 import os
 from typing import List, Optional, Dict
@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # Application Configuration
-    app_name: str = os.getenv("APP_NAME", "SmartPay Backend")
+    app_name: str = os.getenv("APP_NAME", "MeshPay Backend")
     app_version: str = os.getenv("APP_VERSION", "1.0.0")
     debug: bool = os.getenv("DEBUG", False)
     environment: str = os.getenv("ENVIRONMENT", "development")

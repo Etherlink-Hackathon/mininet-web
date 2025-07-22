@@ -6,14 +6,14 @@ const yargs = require("yargs/yargs");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { hideBin } = require("yargs/helpers");
 
-import { SmartPayMVP } from "../typechain-types";
+import { MeshPayMVP } from "../typechain-types";
 
 /**
- * SmartPay end-to-end demo script.
+ * MeshPay end-to-end demo script.
  *
  * Usage example:
  *   npx hardhat run scripts/fastpay_flow.ts --network sepolia \
- *     --fastpay 0xSmartPayAddress \
+ *     --fastpay 0xMeshPayAddress \
  *     --token 0xTokenAddress \
  *     --senderKey <PRIVATE_KEY_1> \
  *     --recipientKey <PRIVATE_KEY_2> \
@@ -21,18 +21,18 @@ import { SmartPayMVP } from "../typechain-types";
  *
  * For native XTZ:
  *   npx hardhat run scripts/fastpay_flow.ts --network sepolia \
- *     --fastpay 0xSmartPayAddress \
+ *     --fastpay 0xMeshPayAddress \
  *     --native \
  *     --senderKey <PRIVATE_KEY_1> \
  *     --recipientKey <PRIVATE_KEY_2> \
  *     --fund 500 --transfer 100 --seq 1
  *
  * Options:
- *   --fastpay       SmartPayMVP contract address (required)
+ *   --fastpay       MeshPayMVP contract address (required)
  *   --token         ERC-20 token address (required)
  *   --senderKey     Sender's private key (required)
  *   --recipientKey  Recipient's private key (required)
- *   --fund          Amount to deposit into SmartPay (in human units, e.g. "500")
+ *   --fund          Amount to deposit into MeshPay (in human units, e.g. "500")
  *   --transfer      Amount to transfer (certificate amount, e.g. "100")
  *   --seq           Sequence number (default = 1)
  *   --native        Use native XTZ instead of ERC-20 token
@@ -41,7 +41,7 @@ import { SmartPayMVP } from "../typechain-types";
 async function main(): Promise<void> {
   /* ----------------------------- CLI Arguments ----------------------------- */
   const argv = await yargs(hideBin(process.argv))
-    .option("fastpay", { type: "string", demandOption: true, desc: "SmartPayMVP contract address" })
+    .option("fastpay", { type: "string", demandOption: true, desc: "MeshPayMVP contract address" })
     .option("token", { type: "string", desc: "ERC-20 token address (not needed if --native)" })
     .option("native", { type: "boolean", default: false, desc: "Use native XTZ token" })
     .option("senderKey", { type: "string", demandOption: true, desc: "Sender private key" })
@@ -66,16 +66,16 @@ async function main(): Promise<void> {
   const isNative = argv.native as boolean;
   const tokenAddress = isNative ? "0x0000000000000000000000000000000000000000" : (argv.token as string);
 
-  console.log("\n========= SmartPay Flow =========");
+  console.log("\n========= MeshPay Flow =========");
   console.log("Network:", network.name);
   console.log("Sender:", sender.address);
   console.log("Recipient:", recipient.address);
-  console.log("SmartPay Contract:", argv.fastpay);
+  console.log("MeshPay Contract:", argv.fastpay);
   console.log("Token:", isNative ? "Native XTZ" : tokenAddress);
   console.log("================================\n");
 
   /* --------------------------- Contract Instances ------------------------- */
-  const fastPay: SmartPayMVP = await ethers.getContractAt("SmartPayMVP", argv.fastpay as string, sender);
+  const fastPay: MeshPayMVP = await ethers.getContractAt("MeshPayMVP", argv.fastpay as string, sender);
   const token = isNative ? null : await ethers.getContractAt("IERC20", tokenAddress, sender);
 
   /* ---------------------------- Register Users --------------------------- */
@@ -93,11 +93,11 @@ async function main(): Promise<void> {
   /* ------------------------------ Funding -------------------------------- */
   const fundAmount = ethers.parseEther(argv.fund as string);
   if (isNative) {
-    console.log(`Funding SmartPay with ${argv.fund} XTZ …`);
+    console.log(`Funding MeshPay with ${argv.fund} XTZ …`);
     const fundTx = await fastPay.handleNativeFundingTransaction({ value: fundAmount });
     await fundTx.wait();
   } else {
-    console.log(`Funding SmartPay with ${argv.fund} tokens …`);
+    console.log(`Funding MeshPay with ${argv.fund} tokens …`);
     const approveTx = await token!.approve(argv.fastpay as string, fundAmount);
     await approveTx.wait();
     const fundTx = await fastPay.handleFundingTransaction(tokenAddress, fundAmount);
@@ -154,6 +154,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: Error) => {
-  console.error("SmartPay flow script failed:", err);
+  console.error("MeshPay flow script failed:", err);
   process.exit(1);
 }); 

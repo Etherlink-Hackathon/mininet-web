@@ -163,7 +163,7 @@ const NetworkMapPage: React.FC = () => {
           Global Authority Network Map
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Real-time geographical view of SmartPay authorities across the network. Hover over markers for detailed information.
+          Real-time geographical view of MeshPay authorities across the network. Hover over markers for detailed information.
         </Typography>
       </Box>
 

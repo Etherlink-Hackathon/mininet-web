@@ -16,14 +16,14 @@ import {
   type SupportedToken 
 } from '../config/contracts';
 
-// Types for SmartPay operations
+// Types for MeshPay operations
 export interface TokenBalance {
   wallet: string; // Regular wallet balance
-  fastpay: string; // SmartPay system balance
+  fastpay: string; // MeshPay system balance
   total: string; // Combined balance
 }
 
-export interface SmartPayBalance {
+export interface MeshPayBalance {
   XTZ: TokenBalance;
   USDT: TokenBalance;
   USDC: TokenBalance;
@@ -49,7 +49,7 @@ function formatBalance(value: bigint, decimals: number): string {
 }
 
 /**
- * Hook to check if account is registered with SmartPay
+ * Hook to check if account is registered with MeshPay
  */
 export function useIsAccountRegistered() {
   const { address } = useAccount();
@@ -87,7 +87,7 @@ export function useAccountInfo() {
 }
 
 /**
- * Hook to register account with SmartPay
+ * Hook to register account with MeshPay
  */
 export function useRegisterAccount() {
   const chainId = useChainId();
@@ -118,9 +118,9 @@ export function useRegisterAccount() {
 }
 
 /**
- * Hook to get SmartPay balance for a specific token (including native XTZ)
+ * Hook to get MeshPay balance for a specific token (including native XTZ)
  */
-export function useSmartPayBalance(tokenSymbol: TokenSymbol) {
+export function useMeshPayBalance(tokenSymbol: TokenSymbol) {
   const { address } = useAccount();
   const chainId = useChainId();
   const contractAddresses = getContractAddresses(chainId);
@@ -168,7 +168,7 @@ export function useTokenBalance(tokenSymbol: TokenSymbol) {
 }
 
 /**
- * Hook to get token allowance (how much the SmartPay contract can spend)
+ * Hook to get token allowance (how much the MeshPay contract can spend)
  * Only applicable to ERC20 tokens, not native XTZ
  */
 export function useTokenAllowance(tokenSymbol: Exclude<TokenSymbol, 'XTZ'>) {
@@ -189,7 +189,7 @@ export function useTokenAllowance(tokenSymbol: Exclude<TokenSymbol, 'XTZ'>) {
 }
 
 /**
- * Hook to approve token spending by SmartPay contract (ERC20 only)
+ * Hook to approve token spending by MeshPay contract (ERC20 only)
  */
 export function useApproveToken() {
   const chainId = useChainId();
@@ -238,9 +238,9 @@ export function useApproveToken() {
 }
 
 /**
- * Hook to deposit tokens to SmartPay system (ERC20 tokens)
+ * Hook to deposit tokens to MeshPay system (ERC20 tokens)
  */
-export function useDepositToSmartPay() {
+export function useDepositToMeshPay() {
   const chainId = useChainId();
   const contractAddresses = getContractAddresses(chainId);
   
@@ -254,7 +254,7 @@ export function useDepositToSmartPay() {
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
     
     if (tokenConfig.isNative) {
-      throw new Error('Use depositNativeToSmartPay for XTZ deposits');
+      throw new Error('Use depositNativeToMeshPay for XTZ deposits');
     }
 
     if (!contractAddresses?.fastpay) {
@@ -271,7 +271,7 @@ export function useDepositToSmartPay() {
         args: [tokenConfig.address, parsedAmount],
       });
     } catch (err) {
-      console.error('Failed to deposit to SmartPay:', err);
+      console.error('Failed to deposit to MeshPay:', err);
       throw err;
     }
   };
@@ -287,9 +287,9 @@ export function useDepositToSmartPay() {
 }
 
 /**
- * Hook to deposit native XTZ to SmartPay system
+ * Hook to deposit native XTZ to MeshPay system
  */
-export function useDepositNativeToSmartPay() {
+export function useDepositNativeToMeshPay() {
   const chainId = useChainId();
   const contractAddresses = getContractAddresses(chainId);
   
@@ -314,7 +314,7 @@ export function useDepositNativeToSmartPay() {
         value: parsedAmount,
       });
     } catch (err) {
-      console.error('Failed to deposit native XTZ to SmartPay:', err);
+      console.error('Failed to deposit native XTZ to MeshPay:', err);
       throw err;
     }
   };
@@ -333,7 +333,7 @@ export function useDepositNativeToSmartPay() {
  * Utility function to get combined balance data
  */
 export function useCombinedBalances(): {
-  balances: SmartPayBalance | null;
+  balances: MeshPayBalance | null;
   isLoading: boolean;
   error: string | null;
 } {
@@ -342,33 +342,33 @@ export function useCombinedBalances(): {
   const { data: usdtWallet, isLoading: usdtWalletLoading } = useTokenBalance('USDT');
   const { data: usdcWallet, isLoading: usdcWalletLoading } = useTokenBalance('USDC');
   
-  // SmartPay balances
-  const { data: xtzSmartPay, isLoading: xtzSmartPayLoading } = useSmartPayBalance('XTZ');
-  const { data: usdtSmartPay, isLoading: usdtSmartPayLoading } = useSmartPayBalance('USDT');
-  const { data: usdcSmartPay, isLoading: usdcSmartPayLoading } = useSmartPayBalance('USDC');
+  // MeshPay balances
+  const { data: xtzMeshPay, isLoading: xtzMeshPayLoading } = useMeshPayBalance('XTZ');
+  const { data: usdtMeshPay, isLoading: usdtMeshPayLoading } = useMeshPayBalance('USDT');
+  const { data: usdcMeshPay, isLoading: usdcMeshPayLoading } = useMeshPayBalance('USDC');
 
   const isLoading = xtzWalletLoading || usdtWalletLoading || usdcWalletLoading || 
-                   xtzSmartPayLoading || usdtSmartPayLoading || usdcSmartPayLoading;
+                   xtzMeshPayLoading || usdtMeshPayLoading || usdcMeshPayLoading;
 
   if (isLoading) {
     return { balances: null, isLoading: true, error: null };
   }
 
   try {
-    const balances: SmartPayBalance = {
+    const balances: MeshPayBalance = {
       XTZ: {
         wallet: xtzWallet ? formatBalance(xtzWallet.value, SUPPORTED_TOKENS.XTZ.decimals) : '0',
-        fastpay: xtzSmartPay ? formatBalance(xtzSmartPay as bigint, SUPPORTED_TOKENS.XTZ.decimals) : '0',
+        fastpay: xtzMeshPay ? formatBalance(xtzMeshPay as bigint, SUPPORTED_TOKENS.XTZ.decimals) : '0',
         total: '0', // Will be calculated below
       },
       USDT: {
         wallet: usdtWallet ? formatBalance(usdtWallet.value, SUPPORTED_TOKENS.USDT.decimals) : '0',
-        fastpay: usdtSmartPay ? formatBalance(usdtSmartPay as bigint, SUPPORTED_TOKENS.USDT.decimals) : '0',
+        fastpay: usdtMeshPay ? formatBalance(usdtMeshPay as bigint, SUPPORTED_TOKENS.USDT.decimals) : '0',
         total: '0', // Will be calculated below
       },
       USDC: {
         wallet: usdcWallet ? formatBalance(usdcWallet.value, SUPPORTED_TOKENS.USDC.decimals) : '0',
-        fastpay: usdcSmartPay ? formatBalance(usdcSmartPay as bigint, SUPPORTED_TOKENS.USDC.decimals) : '0',
+        fastpay: usdcMeshPay ? formatBalance(usdcMeshPay as bigint, SUPPORTED_TOKENS.USDC.decimals) : '0',
         total: '0', // Will be calculated below
       },
     };
@@ -412,7 +412,7 @@ export async function performDeposit(
       // Step 1: Approve token spending
       await approveToken(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
       
-      // Step 2: Deposit to SmartPay
+      // Step 2: Deposit to MeshPay
       await deposit(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
     }
     

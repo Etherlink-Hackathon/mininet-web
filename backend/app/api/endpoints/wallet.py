@@ -1,5 +1,5 @@
 """
-Wallet management endpoints for SmartPay backend.
+Wallet management endpoints for MeshPay backend.
 Handles account registration, balance queries, and transaction history.
 """
 from typing import Dict, List, Optional
@@ -65,7 +65,7 @@ class HealthCheckResponse(BaseModel):
 @router.get("/account/{address}", response_model=AccountInfoResponse)
 async def get_account_info(address: str) -> AccountInfoResponse:
     """
-    Get account information from SmartPay smart contract.
+    Get account information from MeshPay smart contract.
     
     Args:
         address: Ethereum address to query
@@ -123,7 +123,7 @@ async def get_wallet_balances(address: str) -> WalletBalancesResponse:
 @router.get("/registration-status/{address}", response_model=RegistrationStatusResponse)
 async def get_registration_status(address: str) -> RegistrationStatusResponse:
     """
-    Check if an address is registered with SmartPay and can register if not.
+    Check if an address is registered with MeshPay and can register if not.
     
     Args:
         address: Ethereum address to check
@@ -135,7 +135,7 @@ async def get_registration_status(address: str) -> RegistrationStatusResponse:
         is_registered = await blockchain_client.is_account_registered(address)
         
         if is_registered:
-            message = "Account is already registered with SmartPay"
+            message = "Account is already registered with MeshPay"
             can_register = False
         else:
             message = "Account is not registered. Call registerAccount() to register."
@@ -153,7 +153,7 @@ async def get_registration_status(address: str) -> RegistrationStatusResponse:
 @router.get("/contract-stats", response_model=ContractStatsResponse)
 async def get_contract_stats() -> ContractStatsResponse:
     """
-    Get overall SmartPay contract statistics.
+    Get overall MeshPay contract statistics.
     
     Returns:
         Contract statistics including total accounts and balances
@@ -178,7 +178,7 @@ async def get_recent_events(
     from_block: Optional[int] = Query(None, description="Starting block number")
 ) -> List[RecentEventResponse]:
     """
-    Get recent blockchain events from SmartPay contract.
+    Get recent blockchain events from MeshPay contract.
     
     Args:
         event_type: Type of event to query (AccountRegistered, FundingCompleted, etc.)
@@ -209,7 +209,7 @@ async def blockchain_health_check() -> HealthCheckResponse:
     Check blockchain connection and contract health.
     
     Returns:
-        Health status of blockchain connection and SmartPay contract
+        Health status of blockchain connection and MeshPay contract
     """
     try:
         health_data = await blockchain_client.health_check()

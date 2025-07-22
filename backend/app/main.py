@@ -1,7 +1,7 @@
-"""FastAPI backend for mininet-web SmartPay system.
+"""FastAPI backend for mininet-web MeshPay system.
 
 This application provides a clean REST API for interacting with:
-- SmartPay mesh networks via gateway bridge
+- MeshPay mesh networks via gateway bridge
 - Smart contract operations on Etherlink blockchain
 - Wallet management and transaction processing
 """
@@ -23,8 +23,8 @@ from app.services.blockchain_client import blockchain_client
 # FastAPI application setup
 # ---------------------------------------------------------------------------
 app = FastAPI(
-    title="SmartPay Backend",
-    description="Backend API for SmartPay mesh network and blockchain integration",
+    title="MeshPay Backend",
+    description="Backend API for MeshPay mesh network and blockchain integration",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -68,7 +68,7 @@ async def shutdown_event() -> None:
 async def root() -> Dict[str, Any]:
     """Root endpoint with API information."""
     return {
-        "name": "SmartPay Backend",
+        "name": "MeshPay Backend",
         "version": "1.0.0",
         "status": "running",
         "timestamp": time.time(),
@@ -126,7 +126,7 @@ async def system_info() -> Dict[str, Any]:
     """System information and configuration."""
     return {
         "application": {
-            "name": "SmartPay Backend",
+            "name": "MeshPay Backend",
             "version": "1.0.0",
             "environment": settings.environment,
             "debug": settings.debug,

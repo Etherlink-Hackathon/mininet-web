@@ -6,12 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
- * @title SmartPayMVP
- * @dev Minimal viable SmartPay smart contract for Primary blockchain
- * Based on the original SmartPay design by Facebook/Meta
- * @author SmartPay Team
+ * @title MeshPayMVP
+ * @dev Minimal viable MeshPay smart contract for Primary blockchain
+ * Based on the original MeshPay design by Facebook/Meta
+ * @author MeshPay Team
  */
-contract SmartPayMVP is ReentrancyGuard {
+contract MeshPayMVP is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @dev Address used to represent native XTZ token
@@ -24,11 +24,11 @@ contract SmartPayMVP is ReentrancyGuard {
         /// Prevent spending actions from this account to Primary to be redeemed more than once
         /// Last sequence number that was successfully redeemed to Primary
         uint256 lastRedeemedSequence;
-        /// SmartPay account balance (funded from Primary)
+        /// MeshPay account balance (funded from Primary)
         mapping(address => uint256) balances; // token => balance
     }
 
-    /// @dev Funding transaction from Primary to SmartPay
+    /// @dev Funding transaction from Primary to MeshPay
     struct FundingTransaction {
         address sender;
         address token;
@@ -37,7 +37,7 @@ contract SmartPayMVP is ReentrancyGuard {
         uint256 transactionIndex;
     }
 
-    /// @dev Transfer certificate for off-chain SmartPay payments
+    /// @dev Transfer certificate for off-chain MeshPay payments
     struct TransferCertificate {
         address sender;
         address recipient;
@@ -47,7 +47,7 @@ contract SmartPayMVP is ReentrancyGuard {
         uint256 timestamp;
     }
 
-    /// @dev Redeem transaction from SmartPay to Primary
+    /// @dev Redeem transaction from MeshPay to Primary
     struct RedeemTransaction {
         TransferCertificate transferCertificate;
         bytes signature; // For future committee validation
@@ -57,7 +57,7 @@ contract SmartPayMVP is ReentrancyGuard {
     mapping(address => AccountOnchainState) private accounts;
     mapping(bytes32 => bool) private processedRedemptions;
     
-    /// Total balance of tokens in the SmartPay system
+    /// Total balance of tokens in the MeshPay system
     mapping(address => uint256) public totalBalance;
     
     /// The latest transaction index included in the blockchain
@@ -68,7 +68,7 @@ contract SmartPayMVP is ReentrancyGuard {
     
     uint256 public totalAccounts;
 
-    /// @dev Events matching original SmartPay design
+    /// @dev Events matching original MeshPay design
     event AccountRegistered(address indexed account, uint256 timestamp);
     event FundingCompleted(address indexed sender, address indexed token, uint256 amount, uint256 transactionIndex);
     event RedemptionCompleted(
@@ -109,7 +109,23 @@ contract SmartPayMVP is ReentrancyGuard {
     }
 
     /**
-     * @dev Register a new SmartPay account (free registration)
+     * @dev Registers an account if it's not already registered.
+     * @param user The address of the user to register.
+     */
+    function _registerIfNeeded(address user) internal {
+        if (!accounts[user].registered) {
+            accounts[user].registered = true;
+            accounts[user].registrationTime = block.timestamp;
+            accounts[user].lastRedeemedSequence = 0;
+            
+            totalAccounts++;
+
+            emit AccountRegistered(user, block.timestamp);
+        }
+    }
+
+    /**
+     * @dev Register a new MeshPay account (free registration)
      */
     function registerAccount() external {
         if (accounts[msg.sender].registered) revert AccountAlreadyRegistered();
@@ -124,7 +140,7 @@ contract SmartPayMVP is ReentrancyGuard {
     }
 
     /**
-     * @dev Check if an account is registered with SmartPay
+     * @dev Check if an account is registered with MeshPay
      * @param account The account address to check
      * @return bool Whether the account is registered
      */
@@ -152,15 +168,15 @@ contract SmartPayMVP is ReentrancyGuard {
      * @dev Get account balance for a specific token
      * @param account The account address
      * @param token The token address
-     * @return balance The account's SmartPay balance for the token
+     * @return balance The account's MeshPay balance for the token
      */
     function getAccountBalance(address account, address token) external view returns (uint256) {
         return accounts[account].balances[token];
     }
 
     /**
-     * @dev Handle funding transaction from Primary to SmartPay (ERC20 tokens)
-     * This represents transferring tokens from Primary blockchain to SmartPay system
+     * @dev Handle funding transaction from Primary to MeshPay (ERC20 tokens)
+     * This represents transferring tokens from Primary blockchain to MeshPay system
      * @param token The ERC20 token address
      * @param amount The amount to fund
      */
@@ -170,15 +186,15 @@ contract SmartPayMVP is ReentrancyGuard {
     ) 
         external 
         nonReentrant
-        onlyRegisteredAccount
         validAmount(amount)
     {
+        _registerIfNeeded(msg.sender);
         require(token != NATIVE_TOKEN, "Use handleNativeFundingTransaction for XTZ");
         
-        // Transfer tokens from Primary (msg.sender) to SmartPay system (this contract)
+        // Transfer tokens from Primary (msg.sender) to MeshPay system (this contract)
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         
-        // Update account balance in SmartPay system
+        // Update account balance in MeshPay system
         accounts[msg.sender].balances[token] += amount;
         
         // Update total balance in the system
@@ -198,17 +214,17 @@ contract SmartPayMVP is ReentrancyGuard {
     }
 
     /**
-     * @dev Handle native XTZ funding transaction from Primary to SmartPay
-     * This represents transferring native XTZ from Primary blockchain to SmartPay system
+     * @dev Handle native XTZ funding transaction from Primary to MeshPay
+     * This represents transferring native XTZ from Primary blockchain to MeshPay system
      */
     function handleNativeFundingTransaction() 
         external 
         payable
         nonReentrant
-        onlyRegisteredAccount
         validAmount(msg.value)
     {
-        // Update account balance in SmartPay system (using NATIVE_TOKEN as key)
+        _registerIfNeeded(msg.sender);
+        // Update account balance in MeshPay system (using NATIVE_TOKEN as key)
         accounts[msg.sender].balances[NATIVE_TOKEN] += msg.value;
         
         // Update total balance in the system
@@ -270,7 +286,7 @@ contract SmartPayMVP is ReentrancyGuard {
     }
 
     /**
-     * @dev Handle redeem transaction from SmartPay to Primary
+     * @dev Handle redeem transaction from MeshPay to Primary
      * @param redeemTx The redeem transaction data
      */
     function handleRedeemTransaction(RedeemTransaction calldata redeemTx) 
@@ -303,7 +319,7 @@ contract SmartPayMVP is ReentrancyGuard {
         accounts[cert.sender].balances[cert.token] -= cert.amount;
         totalBalance[cert.token] -= cert.amount;
 
-        // Transfer tokens or native XTZ from SmartPay system to recipient
+        // Transfer tokens or native XTZ from MeshPay system to recipient
         if (cert.token == NATIVE_TOKEN) {
             // Handle native XTZ transfer
             require(address(this).balance >= cert.amount, "Insufficient native balance");
@@ -375,6 +391,6 @@ contract SmartPayMVP is ReentrancyGuard {
      */
     receive() external payable {
         // Allow contract to receive native XTZ
-        // Note: These are not tracked as SmartPay funding transactions
+        // Note: These are not tracked as MeshPay funding transactions
     }
 } 

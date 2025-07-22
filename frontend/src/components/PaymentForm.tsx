@@ -236,7 +236,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
         textAlign="center" 
         mt={2}
       >
-        Transactions are verified by local authorities in the SmartPay network
+        Transactions are verified by local authorities in the MeshPay network
       </Typography>
     </Paper>
   );

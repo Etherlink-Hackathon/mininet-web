@@ -97,11 +97,11 @@ export interface WalletBalance {
   USDC: number;
 }
 
-// Enhanced balance interface for SmartPay integration
+// Enhanced balance interface for MeshPay integration
 export interface EnhancedWalletBalance {
   USDT: {
     wallet: number;      // Regular wallet balance
-    fastpay: number;     // SmartPay system balance  
+    fastpay: number;     // MeshPay system balance  
     total: number;       // Combined balance
   };
   USDC: {
@@ -111,8 +111,8 @@ export interface EnhancedWalletBalance {
   };
 }
 
-// SmartPay account registration status
-export interface SmartPayAccountStatus {
+// MeshPay account registration status
+export interface MeshPayAccountStatus {
   registered: boolean;
   registrationTime?: number;
   lastRedeemedSequence?: number;

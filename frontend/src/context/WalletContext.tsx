@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, type Address } from 'viem';
 import { SMARTPAY_CONTRACT, SUPPORTED_TOKENS, ERC20_ABI, type TokenSymbol } from '../config/contracts';
-import { SmartPayBalance } from '../services/fastpay';
+import { MeshPayBalance } from '../services/fastpay';
 
 // --- API Response Types (from backend) ---
 interface BackendAccountInfo {
@@ -68,19 +68,15 @@ interface WalletContextType {
   
   // Unified State
   accountInfo: AccountInfo | null;
-  balances: SmartPayBalance | null;
+  balances: MeshPayBalance | null;
   stats: ContractStats | null;
   loading: boolean;
-  error: string | null;
+    error: string | null;
   fetchData: () => Promise<void>;
 
-  // Account registration
-  registrationStatus: RegistrationStatus;
-  registerAccount: () => Promise<{ success: boolean, error?: string }>;
-  
   // Deposits
   depositStatus: DepositStatus;
-  depositToSmartPay: (token: TokenSymbol, amount: string) => Promise<{ success: boolean; txHash?: string }>;
+  depositToMeshPay: (token: TokenSymbol, amount: string) => Promise<{ success: boolean; txHash?: string }>;
   
   // Error management
   clearErrors: () => void;
@@ -105,18 +101,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   
   // --- State for wallet data ---
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
-  const [balances, setBalances] = useState<SmartPayBalance | null>(null);
+  const [balances, setBalances] = useState<MeshPayBalance | null>(null);
   const [stats, setStats] = useState<ContractStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // State for registration
-  const [registrationStatus, setRegistrationStatus] = useState<RegistrationStatus>({
-    isPending: false,
-    isConfirming: false,
-    isComplete: false,
-    error: null,
-  });
   
   // State for deposits
   const [depositStatus, setDepositStatus] = useState<DepositStatus>({
@@ -127,12 +115,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   });
   
   // Contract write hooks
-  const { writeContract: writeRegister, data: registerHash, isPending: isRegisterPending, error: registerError } = useWriteContract();
   const { writeContract: writeFunding, data: fundingHash, isPending: isFundingPending, error: fundingError } = useWriteContract();
   const { writeContract: writeApproval, data: approvalHash, isPending: isApprovalPending, error: approvalError } = useWriteContract();
 
   // Transaction receipt hooks
-  const { isLoading: isRegisterConfirming, isSuccess: isRegisterSuccess } = useWaitForTransactionReceipt({ hash: registerHash });
   const { isLoading: isApprovalConfirming, isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({ hash: approvalHash });
   const { isLoading: isFundingConfirming, isSuccess: isFundingSuccess } = useWaitForTransactionReceipt({ hash: fundingHash });
 
@@ -168,7 +154,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         totalTokenBalances: statsData.total_token_balances,
       });
 
-      const newBalances: SmartPayBalance = {
+      const newBalances: MeshPayBalance = {
         XTZ: { wallet: '0', fastpay: '0', total: '0' },
         USDT: { wallet: '0', fastpay: '0', total: '0' },
         USDC: { wallet: '0', fastpay: '0', total: '0' },
@@ -192,36 +178,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
   
-  const registerAccount = async (): Promise<{ success: boolean, error?: string }> => {
+  const depositToMeshPay = async (token: TokenSymbol, amount: string): Promise<{ success: boolean; txHash?: string }> => {
     if (!address) throw new Error('No wallet connected');
-    
-    try {
-      setRegistrationStatus({
-        isPending: true,
-        isConfirming: false,
-        isComplete: false,
-        error: null,
-      });
 
-      writeRegister({
-        address: SMARTPAY_CONTRACT.address,
-        abi: SMARTPAY_CONTRACT.abi,
-        functionName: 'registerAccount',
-      });
-      return { success: true };
-    } catch (error) {
-      setRegistrationStatus(prev => ({
-        ...prev,
-        isPending: false,
-        error: error instanceof Error ? error.message : 'Registration failed',
-      }));
-      return { success: false, error: error instanceof Error ? error.message : 'Registration failed' };
+    // Ensure MeshPay contract address is configured
+    if (SMARTPAY_CONTRACT.address === '0x0000000000000000000000000000000000000000') {
+      throw new Error('MeshPay contract address is not configured. Please set VITE_SMARTPAY_CONTRACT_ADDRESS in your environment.');
     }
-  };
-
-  const depositToSmartPay = async (token: TokenSymbol, amount: string): Promise<{ success: boolean; txHash?: string }> => {
-    if (!address) throw new Error('No wallet connected');
-    if (!accountInfo?.isRegistered) throw new Error('Account not registered');
 
     const tokenConfig = SUPPORTED_TOKENS[token];
     const amountWei = parseEther(amount);
@@ -235,7 +198,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       });
 
       if (tokenConfig.isNative) {
-        // Handle native XTZ funding
         writeFunding({
           address: SMARTPAY_CONTRACT.address,
           abi: SMARTPAY_CONTRACT.abi,
@@ -243,7 +205,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           value: amountWei,
         });
       } else {
-        // Handle ERC20 token funding (requires approval first)
         writeApproval({
           address: tokenConfig.address,
           abi: ERC20_ABI,
@@ -253,34 +214,18 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       return { success: true };
-    } catch (error) {
-      setDepositStatus(prev => ({
-        ...prev,
-        isPending: false,
-        error: error instanceof Error ? error.message : 'Deposit failed',
-      }));
+    } catch (err) {
+      setDepositStatus(prev => ({ ...prev, isPending: false, error: err instanceof Error ? err.message : 'Deposit failed' }));
       return { success: false };
     }
   };
   
   const clearErrors = (): void => {
-    setRegistrationStatus(prev => ({ ...prev, error: null }));
     setDepositStatus(prev => ({ ...prev, error: null }));
     setError(null);
   };
 
   // Effects for handling transaction states
-  useEffect(() => {
-    setRegistrationStatus(prev => ({
-      ...prev,
-      isPending: isRegisterPending,
-      isConfirming: isRegisterConfirming,
-      isComplete: isRegisterSuccess,
-      transactionHash: registerHash,
-      error: registerError ? registerError.message : null,
-    }));
-  }, [isRegisterPending, isRegisterConfirming, isRegisterSuccess, registerHash, registerError]);
-
   useEffect(() => {
     if (isApprovalSuccess && depositStatus.currentStep === 'approving') {
       // Logic for multi-step ERC20 deposit
@@ -288,10 +233,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   }, [isApprovalSuccess]);
   
   useEffect(() => {
-    if (isFundingSuccess || isRegisterSuccess) {
+    if (isFundingSuccess) {
       fetchData(); // Refresh all data after a successful transaction
     }
-  }, [isFundingSuccess, isRegisterSuccess]);
+  }, [isFundingSuccess]);
 
   // Refresh data when account changes
   useEffect(() => {
@@ -309,10 +254,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     loading,
     error,
     fetchData,
-    registrationStatus,
-    registerAccount,
     depositStatus,
-    depositToSmartPay,
+    depositToMeshPay,
     clearErrors,
   };
 

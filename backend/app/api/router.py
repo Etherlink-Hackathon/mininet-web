@@ -20,7 +20,7 @@ async def health():
     """API health check endpoint."""
     return {
         "status": "ok",
-        "message": "SmartPay API is running",
+        "message": "MeshPay API is running",
         "endpoints": {
             "authorities": "/api/authorities",
             "transactions": "/api/transactions", 

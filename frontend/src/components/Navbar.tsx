@@ -84,7 +84,7 @@ const Navbar: React.FC = () => {
       icon: <WalletMainIcon />,
       items: [
         { path: '/wallet', label: 'Balance', icon: <WalletIcon />, description: 'View balances' },
-        { path: '/wallet?tab=deposit', label: 'Deposit', icon: <DepositIcon />, description: 'Fund SmartPay account' },
+        { path: '/wallet?tab=deposit', label: 'Deposit', icon: <DepositIcon />, description: 'Fund MeshPay account' },
         { path: '/authority?action=stake', label: 'Stake', icon: <StakeIcon />, description: 'Stake to become authority' },
       ]
     },
@@ -136,7 +136,7 @@ const Navbar: React.FC = () => {
               WebkitTextFillColor: 'transparent',
             }}
           >
-            SmartPay
+            MeshPay
           </Typography>
         </Box>
 

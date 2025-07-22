@@ -1,4 +1,4 @@
-name: SmartPay Smart Contracts CI
+name: MeshPay Smart Contracts CI
 
 on:
   push:

@@ -1,6 +1,6 @@
-# Mininet-WiFi SmartPay Backend
+# Mininet-WiFi MeshPay Backend
 
-> **Single-file, zero-dependency* FastAPI service that bridges the React web UI to SmartPay authorities running in an IEEE 802.11s mesh network.**
+> **Single-file, zero-dependency* FastAPI service that bridges the React web UI to MeshPay authorities running in an IEEE 802.11s mesh network.**
 >
 > *Zero-dependency beyond `httpx`, `fastapi`, and `uvicorn` – see `requirements.txt` for full list.
 
@@ -34,9 +34,9 @@ Frontend (React)  ─┐                  │
                    ▼                  │
        mesh_client.py  ─────────►  Mininet-WiFi Gateway Bridge (NAT node exposing :8080)
                    │                  │
-                   │  TCP SmartPay     │
+                   │  TCP MeshPay     │
                    ▼                  ▼
-             SmartPay Authority  …  SmartPay Authority
+             MeshPay Authority  …  MeshPay Authority
 ```
 
 * The **gateway bridge** (running inside the NAT node of the mesh demo) exposes standard HTTP routes ( `/authorities`, `/authorities/<name>/transfer`, … ).
@@ -78,7 +78,7 @@ docker run --rm -p 8000:8000 -e MESH_GATEWAY_URL=http://10.0.0.254:8080 fastpay-
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Simple liveness probe |
-| GET | `/authorities?refresh=false` | Discover SmartPay authorities |
+| GET | `/authorities?refresh=false` | Discover MeshPay authorities |
 | GET | `/authorities/{name}` | Single authority details |
 | POST | `/transfer?authority={name}` | Forward *TransferRequest* JSON to authority |
 | POST | `/confirmation?authority={name}` | Forward *ConfirmationRequest* JSON to authority |

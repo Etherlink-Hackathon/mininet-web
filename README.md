@@ -2,7 +2,7 @@
 
 ## 🚀 Project Overview
 
-This is a web application for the **Etherlink Summer Camp** that enables **offline stablecoin payments** (USDT/USDC) without internet connectivity. The application interfaces with a SmartPay authority network running on `mininet-wifi` to verify and process transactions through local TCP communication.
+This is a web application for the **Etherlink Summer Camp** that enables **offline stablecoin payments** (USDT/USDC) without internet connectivity. The application interfaces with a MeshPay authority network running on `mininet-wifi` to verify and process transactions through local TCP communication.
 
 ## 🌟 Key Features
 
@@ -17,7 +17,7 @@ This is a web application for the **Etherlink Summer Camp** that enables **offli
 
 ```
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│   Web Frontend      │    │   Backend API       │    │  SmartPay Network    │
+│   Web Frontend      │    │   Backend API       │    │  MeshPay Network    │
 │   (React + Map)     │◄──►│   (FastAPI)         │◄──►│  (mininet-wifi)     │
 │                     │    │                     │    │                     │
 │ • Interactive Map   │    │ • Authority Proxy   │    │ • WiFi Authorities  │
@@ -62,7 +62,7 @@ mininet-web/
 - Python 3.9+
 - Node.js 18+
 - Docker & Docker Compose
-- Running mininet-wifi with SmartPay authorities
+- Running mininet-wifi with MeshPay authorities
 
 ### 1. Clone and Setup
 
@@ -117,7 +117,7 @@ cd frontend && npm start
 ### Backend Configuration (`backend/app/core/config.py`)
 
 ```python
-# SmartPay Authority Network
+# MeshPay Authority Network
 AUTHORITY_DISCOVERY_PORT = 8080
 AUTHORITY_TIMEOUT = 5.0
 MIN_QUORUM_SIZE = 3
@@ -241,18 +241,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - **Etherlink Documentation**: https://docs.etherlink.com/
-- **SmartPay Repository**: ../fastpay/
+- **MeshPay Repository**: ../fastpay/
 - **Mininet-WiFi**: ../mininet-wifi/
 
 ## 🎯 Etherlink Summer Camp Submission
 
 This project demonstrates:
-- ✅ **Offline-first architecture** using SmartPay protocol
+- ✅ **Offline-first architecture** using MeshPay protocol
 - ✅ **Stablecoin integration** (USDT/USDC)
 - ✅ **Real-time network visualization**
 - ✅ **Cryptographic transaction certificates**
 - ✅ **User-friendly payment interface**
-- ✅ **Integration with existing SmartPay infrastructure**
+- ✅ **Integration with existing MeshPay infrastructure**
 
 ---
 

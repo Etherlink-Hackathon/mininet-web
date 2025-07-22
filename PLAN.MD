@@ -2,7 +2,7 @@
 ================================================================================
 📅 Timestamp: 2025-01-15T00:00:00Z (Updated)
 📋 Project: Integration of smart-pay fastpay_mesh_demo.py with mininet-web system
-🎯 Goal: Enable mesh network SmartPay transactions via web interface with Internet Gateway
+🎯 Goal: Enable mesh network MeshPay transactions via web interface with Internet Gateway
 
 ## OVERVIEW
 ================================================================================
@@ -55,7 +55,7 @@ This plan integrates three main components through a dedicated internet gateway:
 **Cons**: 
   - ❌ Additional protocol complexity
   - ❌ Requires WebSocket implementation in mesh nodes
-  - ❌ Not aligned with existing TCP-based SmartPay protocol
+  - ❌ Not aligned with existing TCP-based MeshPay protocol
 
 ### Option 4: Message Queue Bridge
 **Approach**: Use file-based or shared memory message queue between mesh and web components.
@@ -137,7 +137,7 @@ class MeshInternetBridge:
 **Enhanced Discovery**:
 ```python
 class MeshAuthorityClient:
-    """Enhanced client for communicating with mesh SmartPay authorities via gateway."""
+    """Enhanced client for communicating with mesh MeshPay authorities via gateway."""
     
     def __init__(self):
         self.mesh_bridge_url = "http://10.0.0.254:8080"  # Gateway bridge
@@ -212,8 +212,8 @@ class MeshBridgeHandler(http.server.BaseHTTPRequestHandler):
     
     def _forward_to_mesh_authority(self, ip: str, port: int, data: dict) -> dict:
         """Forward request to mesh authority via TCP."""
-        # Use existing SmartPay TCP protocol to communicate with authorities
-        # Send JSON data with length prefix as per SmartPay protocol
+        # Use existing MeshPay TCP protocol to communicate with authorities
+        # Send JSON data with length prefix as per MeshPay protocol
 ```
 
 #### 2.2 Gateway Routing Configuration
@@ -395,9 +395,9 @@ class TestGatewayIntegration:
 
 ```bash
 #!/bin/bash
-# Enhanced SmartPay Mesh + Gateway + Web Integration Startup Script
+# Enhanced MeshPay Mesh + Gateway + Web Integration Startup Script
 
-echo "🌐 Starting SmartPay Mesh with Internet Gateway + Web Demo"
+echo "🌐 Starting MeshPay Mesh with Internet Gateway + Web Demo"
 
 # Start enhanced mesh network with gateway
 python3 -m mn_wifi.examples.fastpay_mesh_internet_demo \
@@ -509,7 +509,7 @@ echo "  • Mesh CLI: Connect to the mesh demo process"
 ### Risk 4: Gateway Bridge Protocol Translation
 **Mitigation**: 
 - Thorough testing of HTTP-to-TCP protocol conversion
-- Validation of SmartPay message format preservation
+- Validation of MeshPay message format preservation
 - Error handling for protocol mismatches
 
 ### Risk 5: Internet Connectivity Requirements
@@ -531,7 +531,7 @@ echo "  • Mesh CLI: Connect to the mesh demo process"
 ## STATUS: READY FOR GATEWAY IMPLEMENTATION ✅
 ================================================================================
 
-This updated plan provides a comprehensive roadmap for integrating SmartPay mesh networking
+This updated plan provides a comprehensive roadmap for integrating MeshPay mesh networking
 with the mininet-web system using a dedicated internet gateway bridge. The chosen approach
 leverages mn-wifi's native NAT support while maintaining mesh network integrity and enabling
 seamless web integration.

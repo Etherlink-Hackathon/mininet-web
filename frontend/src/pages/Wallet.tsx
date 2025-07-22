@@ -91,7 +91,7 @@ const Wallet: React.FC = () => {
     );
   };
 
-  if (!isConnected) {
+  if (!address) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box textAlign="center">
@@ -99,7 +99,7 @@ const Wallet: React.FC = () => {
             Connect Your Wallet
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            Connect your wallet to view balances and make SmartPay transactions
+            Connect your wallet to view balances and make MeshPay transactions
           </Typography>
           {connectors.map((connector) => (
             <Button
@@ -129,6 +129,38 @@ const Wallet: React.FC = () => {
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       </Box>
 
+      {accountInfo && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>Account Information</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  {accountInfo.isRegistered ? <CheckCircle color="success" /> : <ErrorIcon color="error" />}
+                  <Typography variant="body1">
+                    Status: {accountInfo.isRegistered ? 'Registered' : 'Not Registered'}
+                  </Typography>
+                </Box>
+              </Grid>
+              {accountInfo.isRegistered && (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Registration Time: {new Date(accountInfo.registrationTime * 1000).toLocaleString()}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      Last Redeemed Sequence: {accountInfo.lastRedeemedSequence}
+                    </Typography>
+                  </Grid>
+                </>
+              )}
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
+
       <Grid container spacing={3} mb={4}>
         {balances && Object.entries(balances).map(([symbol, balance]) => {
           const tokenKey = symbol as TokenSymbol;
@@ -149,7 +181,7 @@ const Wallet: React.FC = () => {
                     <Typography variant="h5" fontWeight={600}>{formatBalance(balance.wallet)}</Typography>
                   </Box>
                   <Box>
-                    <Typography variant="body2" color="text.secondary">SmartPay Balance</Typography>
+                    <Typography variant="body2" color="text.secondary">MeshPay Balance</Typography>
                     <Typography variant="h6" color="primary.main">{formatBalance(balance.fastpay)}</Typography>
                   </Box>
                   <Divider sx={{ my: 1 }} />
@@ -168,7 +200,7 @@ const Wallet: React.FC = () => {
 
       <Box mb={4}>
         <Button variant="contained" startIcon={<Add />} onClick={() => setDepositModalOpen(true)} disabled={!isConnected}>
-          Deposit to SmartPay
+          Deposit to MeshPay
         </Button>
       </Box>
 

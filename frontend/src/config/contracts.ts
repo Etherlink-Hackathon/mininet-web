@@ -1,19 +1,19 @@
 import { type Address } from 'viem';
-import { SmartPayMVP } from '../abis/SmartPayMVP';
-import { SmartPayAuthorities } from '../abis/SmartPayAuthorities';
+import { MeshPayMVP } from '../abis/MeshPayMVP';
+import { MeshPayAuthorities } from '../abis/MeshPayAuthorities';
 // Native token address (used for XTZ)
 export const NATIVE_TOKEN = '0x0000000000000000000000000000000000000000' as Address;
 
-// SmartPay MVP Contract Configuration
+// MeshPay MVP Contract Configuration
 export const SMARTPAY_CONTRACT = {
   address: (import.meta.env.VITE_SMARTPAY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
-  abi: SmartPayMVP.abi,
+  abi: MeshPayMVP.abi,
 } as const;
 
-// SmartPay Authority Manager Contract Configuration
+// MeshPay Authority Manager Contract Configuration
 export const FASTPAY_AUTHORITY_CONTRACT = {
   address: (import.meta.env.VITE_SMARTPAY_AUTHORITY_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
-  abi: SmartPayAuthorities.abi,
+  abi: MeshPayAuthorities.abi,
 } as const;
 
 // ERC20 Token ABI
@@ -31,7 +31,7 @@ export const ERC20_ABI = [
   'event Approval(address indexed owner, address indexed spender, uint256 value)',
 ] as const;
 
-// Supported tokens configuration for SmartPay
+// Supported tokens configuration for MeshPay
 export const SUPPORTED_TOKENS = {
   XTZ: {
     address: NATIVE_TOKEN,

@@ -1,4 +1,4 @@
-"""Transactions API endpoints for SmartPay."""
+"""Transactions API endpoints for MeshPay."""
 
 from typing import Dict, List, Any
 from fastapi import APIRouter
