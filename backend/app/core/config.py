@@ -138,14 +138,14 @@ SUPPORTED_TOKENS = {
         'is_native': True,
     },
     'USDT': {
-        'address': settings.usdt_contract_address or '0x0000000000000000000000000000000000000000',
+        'address': settings.usdt_contract_address,  # None if not configured
         'decimals': 6,
         'symbol': 'USDT',
         'name': 'Tether USD',
         'is_native': False,
     },
     'USDC': {
-        'address': settings.usdc_contract_address or '0x0000000000000000000000000000000000000000',
+        'address': settings.usdc_contract_address,  # None if not configured
         'decimals': 6,
         'symbol': 'USDC',
         'name': 'USD Coin',

@@ -1,5 +1,5 @@
 """
-Blockchain client for interacting with SmartPay smart contracts on Etherlink.
+Blockchain client for interacting with FastPay smart contracts on Etherlink.
 """
 import asyncio
 import logging
@@ -7,25 +7,17 @@ from typing import Dict, List, Optional, Any, Union
 from decimal import Decimal
 from dataclasses import dataclass
 
-# Make web3 imports optional
-try:
-    from web3 import Web3
-    from web3.middleware import geth_poa_middleware
-    from eth_account import Account
-    WEB3_AVAILABLE = True
-except ImportError:
-    WEB3_AVAILABLE = False
-    # Provide mock classes for type hints
-    class Web3:
-        pass
-    class Account:
-        pass
+from web3 import Web3
+from web3.middleware import geth_poa_middleware
+from eth_account import Account
+
+
 
 from ..core.config import settings, SUPPORTED_TOKENS
 
 logger = logging.getLogger(__name__)
 
-# SmartPay contract ABI (essential functions)
+# FastPay contract ABI (essential functions)
 FASTPAY_ABI = [
     # Account Management
     {
@@ -167,24 +159,17 @@ class ContractStats:
     total_token_balances: Dict[str, str]
 
 class BlockchainClient:
-    """Client for interacting with Etherlink blockchain and SmartPay contracts."""
+    """Client for interacting with Etherlink blockchain and FastPay contracts."""
     
     def __init__(self):
         """Initialize blockchain client with Web3 connection."""
         self.w3: Optional[Web3] = None
         self.fastpay_contract = None
         self.account = None
-        if WEB3_AVAILABLE:
-            self._initialize_connection()
-        else:
-            logger.warning("Web3 dependencies not available. Blockchain features disabled.")
+        self._initialize_connection()
     
     def _initialize_connection(self) -> None:
         """Initialize Web3 connection to Etherlink."""
-        if not WEB3_AVAILABLE:
-            logger.error("Cannot initialize connection: web3 dependencies not installed")
-            return
-            
         try:
             # Connect to Etherlink RPC
             self.w3 = Web3(Web3.HTTPProvider(settings.rpc_url))
@@ -198,13 +183,13 @@ class BlockchainClient:
             
             logger.info(f"Connected to blockchain: {settings.chain_name} (Chain ID: {settings.chain_id})")
             
-            # Initialize SmartPay contract if address is configured
+            # Initialize FastPay contract if address is configured
             if settings.fastpay_contract_address:
                 self.fastpay_contract = self.w3.eth.contract(
                     address=Web3.to_checksum_address(settings.fastpay_contract_address),
                     abi=FASTPAY_ABI
                 )
-                logger.info(f"SmartPay contract initialized at {settings.fastpay_contract_address}")
+                logger.info(f"FastPay contract initialized at {settings.fastpay_contract_address}")
             
             # Initialize backend account if private key is provided
             if settings.backend_private_key:
@@ -216,9 +201,9 @@ class BlockchainClient:
             self.w3 = None
     
     async def get_account_info(self, address: str) -> Optional[AccountInfo]:
-        """Get account information from SmartPay contract."""
+        """Get account information from FastPay contract."""
         if not self.fastpay_contract:
-            logger.error("SmartPay contract not initialized")
+            logger.error("FastPay contract not initialized")
             return None
         
         try:
@@ -240,8 +225,8 @@ class BlockchainClient:
     
     async def get_account_balances(self, address: str) -> List[TokenBalance]:
         """Get all token balances for an account."""
-        if not self.w3 or not self.fastpay_contract:
-            logger.error("Blockchain client not properly initialized")
+        if not self.w3:
+            logger.error("Web3 not initialized")
             return []
         
         balances = []
@@ -249,29 +234,77 @@ class BlockchainClient:
         
         for token_symbol, token_config in SUPPORTED_TOKENS.items():
             try:
-                token_address = Web3.to_checksum_address(token_config['address'])
+                token_address = token_config['address']
                 decimals = token_config['decimals']
+                
+                # Initialize balances
+                wallet_balance = "0"
+                fastpay_balance = "0"
                 
                 # Get wallet balance
                 if token_config['is_native']:
-                    # Native XTZ balance
-                    wallet_balance_wei = self.w3.eth.get_balance(address)
+                    # Native XTZ balance - this should always work
+                    try:
+                        checksum_address = Web3.to_checksum_address(address)
+                        wallet_balance_wei = self.w3.eth.get_balance(checksum_address)
+                        wallet_balance = self._wei_to_human(wallet_balance_wei, decimals)
+                        logger.info(f"Successfully got {token_symbol} wallet balance: {wallet_balance}")
+                    except Exception as e:
+                        logger.error(f"Failed to get {token_symbol} wallet balance for {address}: {e}")
+                        wallet_balance = "0"
+                        
                 else:
-                    # ERC20 token balance
-                    token_contract = self.w3.eth.contract(
-                        address=token_address,
-                        abi=ERC20_ABI
-                    )
-                    wallet_balance_wei = token_contract.functions.balanceOf(address).call()
+                    # ERC20 token balance - check if token is actually deployed
+                    try:
+                        if token_address:
+                            token_address_checksum = Web3.to_checksum_address(token_address)
+                            
+                            # Check if contract exists
+                            code = self.w3.eth.get_code(token_address_checksum)
+                            if code and code != b'':
+                                # Contract exists, try to get balance
+                                token_contract = self.w3.eth.contract(
+                                    address=token_address_checksum,
+                                    abi=ERC20_ABI
+                                )
+                                wallet_balance_wei = token_contract.functions.balanceOf(address).call()
+                                wallet_balance = self._wei_to_human(wallet_balance_wei, decimals)
+                                logger.info(f"Successfully got {token_symbol} wallet balance: {wallet_balance}")
+                            else:
+                                logger.warning(f"{token_symbol} contract not deployed at {token_address}")
+                                wallet_balance = "0"
+                        else:
+                            logger.warning(f"{token_symbol} contract address not configured")
+                            wallet_balance = "0"
+                            
+                    except Exception as e:
+                        logger.error(f"Failed to get {token_symbol} wallet balance for {address}: {e}")
+                        wallet_balance = "0"
                 
-                # Get SmartPay balance
-                fastpay_balance_wei = self.fastpay_contract.functions.getAccountBalance(
-                    address, token_address
-                ).call()
+                # Get SmartPay balance (only if SmartPay contract is available)
+                if self.fastpay_contract:
+                    try:
+                        # Use the correct token address for SmartPay contract
+                        if token_config['is_native']:
+                            # Use NATIVE_TOKEN address (0x0000000000000000000000000000000000000000) for XTZ
+                            fastpay_token_address = '0x0000000000000000000000000000000000000000'
+                        else:
+                            fastpay_token_address = Web3.to_checksum_address(token_address) if token_address else '0x0000000000000000000000000000000000000000'
+                        
+                        fastpay_balance_wei = self.fastpay_contract.functions.getAccountBalance(
+                            address, fastpay_token_address
+                        ).call()
+                        fastpay_balance = self._wei_to_human(fastpay_balance_wei, decimals)
+                        logger.info(f"Successfully got {token_symbol} SmartPay balance: {fastpay_balance}")
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to get {token_symbol} SmartPay balance for {address}: {e}")
+                        fastpay_balance = "0"
+                else:
+                    logger.warning("SmartPay contract not available, using 0 for SmartPay balances")
+                    fastpay_balance = "0"
                 
-                # Convert to human-readable format
-                wallet_balance = self._wei_to_human(wallet_balance_wei, decimals)
-                fastpay_balance = self._wei_to_human(fastpay_balance_wei, decimals)
+                # Calculate total
                 total_balance = str(Decimal(wallet_balance) + Decimal(fastpay_balance))
                 
                 balances.append(TokenBalance(
@@ -284,7 +317,7 @@ class BlockchainClient:
                 ))
                 
             except Exception as e:
-                logger.error(f"Failed to get {token_symbol} balance for {address}: {e}")
+                logger.error(f"Failed to process {token_symbol} balance for {address}: {e}")
                 # Add zero balance as fallback
                 balances.append(TokenBalance(
                     token_symbol=token_symbol,
@@ -300,7 +333,7 @@ class BlockchainClient:
     async def get_contract_stats(self) -> Optional[ContractStats]:
         """Get overall contract statistics."""
         if not self.fastpay_contract:
-            logger.error("SmartPay contract not initialized")
+            logger.error("FastPay contract not initialized")
             return None
         
         try:
@@ -332,7 +365,7 @@ class BlockchainClient:
             return None
     
     async def is_account_registered(self, address: str) -> bool:
-        """Check if an account is registered with SmartPay."""
+        """Check if an account is registered with FastPay."""
         if not self.fastpay_contract:
             return False
         
@@ -395,10 +428,6 @@ class BlockchainClient:
             'fastpay_contract': False,
             'error': None
         }
-        
-        if not WEB3_AVAILABLE:
-            health_status['error'] = 'Web3 dependencies not available'
-            return health_status
         
         try:
             if self.w3 and self.w3.is_connected():

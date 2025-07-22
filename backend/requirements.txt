@@ -4,10 +4,10 @@ uvicorn[standard]>=0.24.0
 python-multipart>=0.0.6
 websockets>=12.0
 
-# Blockchain interaction (optional - can be installed separately)
-# web3>=6.15.1
-# eth-account>=0.10.0  
-# eth-utils>=2.3.1
+# Blockchain interaction (optional)
+web3>=6.15.1           
+eth-account==0.9.0        
+eth-utils>=2.3.1          
 # eth-abi>=4.2.1
 # eth-typing>=3.5.2
 # cryptography>=41.0.8

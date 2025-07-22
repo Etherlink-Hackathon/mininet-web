@@ -1,10 +1,50 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useAccount, useBalance, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseEther, formatEther, type Address } from 'viem';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther, type Address } from 'viem';
 import { FASTPAY_CONTRACT, SUPPORTED_TOKENS, ERC20_ABI, type TokenSymbol } from '../config/contracts';
-import { TokenBalance, SmartPayBalance } from '../services/fastpay';
+import { SmartPayBalance } from '../services/fastpay';
 
-// Enhanced types for registration and deposit status
+// --- API Response Types (from backend) ---
+interface BackendAccountInfo {
+  address: string;
+  is_registered: boolean;
+  registration_time: number;
+  last_redeemed_sequence: number;
+}
+
+interface BackendTokenBalance {
+  token_symbol: string;
+  token_address: string;
+  wallet_balance: string;
+  fastpay_balance: string;
+  total_balance: string;
+  decimals: number;
+}
+
+interface BackendWalletBalances {
+  address: string;
+  balances: BackendTokenBalance[];
+}
+
+interface BackendContractStats {
+  total_accounts: number;
+  total_native_balance: string;
+  total_token_balances: Record<string, string>;
+}
+
+// --- Clean Context State Types ---
+interface AccountInfo {
+  isRegistered: boolean;
+  registrationTime: number;
+  lastRedeemedSequence: number;
+}
+
+interface ContractStats {
+  totalAccounts: number;
+  totalNativeBalance: string;
+  totalTokenBalances: Record<string, string>;
+}
+
 interface RegistrationStatus {
   isPending: boolean;
   isConfirming: boolean;
@@ -21,35 +61,26 @@ interface DepositStatus {
   transactionHash?: string;
 }
 
-interface ContractAccountInfo {
-  isRegistered: boolean;
-  registrationTime: bigint;
-  lastRedeemedSequence: bigint;
-}
-
 interface WalletContextType {
   // Connection status
   isConnected: boolean;
   address: Address | undefined;
   
-  // Account registration
-  isRegistered: boolean;
-  accountInfo: ContractAccountInfo | null;
-  registrationStatus: RegistrationStatus;
-  registerAccount: () => Promise<void>;
-  
-  // Balances
+  // Unified State
+  accountInfo: AccountInfo | null;
   balances: SmartPayBalance | null;
-  balancesLoading: boolean;
-  balancesError: string | null;
-  refreshBalances: () => Promise<void>;
+  stats: ContractStats | null;
+  loading: boolean;
+  error: string | null;
+  fetchData: () => Promise<void>;
+
+  // Account registration
+  registrationStatus: RegistrationStatus;
+  registerAccount: () => Promise<{ success: boolean, error?: string }>;
   
   // Deposits
   depositStatus: DepositStatus;
   depositToSmartPay: (token: TokenSymbol, amount: string) => Promise<{ success: boolean; txHash?: string }>;
-  
-  // Recent activity
-  recentDeposits: any[];
   
   // Error management
   clearErrors: () => void;
@@ -72,6 +103,13 @@ interface WalletProviderProps {
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const { address, isConnected } = useAccount();
   
+  // --- State for wallet data ---
+  const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
+  const [balances, setBalances] = useState<SmartPayBalance | null>(null);
+  const [stats, setStats] = useState<ContractStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   // State for registration
   const [registrationStatus, setRegistrationStatus] = useState<RegistrationStatus>({
     isPending: false,
@@ -88,64 +126,73 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     error: null,
   });
   
-  // State for balances and account info
-  const [balances, setBalances] = useState<SmartPayBalance | null>(null);
-  const [balancesLoading, setBalancesLoading] = useState(false);
-  const [balancesError, setBalancesError] = useState<string | null>(null);
-  const [recentDeposits, setRecentDeposits] = useState<any[]>([]);
-  
-  // Contract read hooks for account info
-  const { data: isRegistered, refetch: refetchRegistration } = useReadContract({
-    address: FASTPAY_CONTRACT.address,
-    abi: FASTPAY_CONTRACT.abi,
-    functionName: 'isAccountRegistered',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  });
-
-  const { data: accountInfoData, refetch: refetchAccountInfo } = useReadContract({
-    address: FASTPAY_CONTRACT.address,
-    abi: FASTPAY_CONTRACT.abi,
-    functionName: 'getAccountInfo',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  });
-
-  // Parse account info with proper typing
-  const accountInfo: ContractAccountInfo | null = accountInfoData && Array.isArray(accountInfoData)
-    ? {
-        isRegistered: accountInfoData[0] as boolean,
-        registrationTime: accountInfoData[1] as bigint,
-        lastRedeemedSequence: accountInfoData[2] as bigint,
-      }
-    : null;
-
-  // Native balance hook
-  const { data: nativeBalance, refetch: refetchNativeBalance } = useBalance({
-    address: address,
-    query: { enabled: !!address },
-  });
-
   // Contract write hooks
-  const { writeContract: writeRegister, data: registerHash, isPending: isRegisterPending } = useWriteContract();
-  const { writeContract: writeFunding, data: fundingHash, isPending: isFundingPending } = useWriteContract();
-  const { writeContract: writeApproval, data: approvalHash, isPending: isApprovalPending } = useWriteContract();
+  const { writeContract: writeRegister, data: registerHash, isPending: isRegisterPending, error: registerError } = useWriteContract();
+  const { writeContract: writeFunding, data: fundingHash, isPending: isFundingPending, error: fundingError } = useWriteContract();
+  const { writeContract: writeApproval, data: approvalHash, isPending: isApprovalPending, error: approvalError } = useWriteContract();
 
   // Transaction receipt hooks
-  const { isLoading: isRegisterConfirming, isSuccess: isRegisterSuccess } = useWaitForTransactionReceipt({
-    hash: registerHash,
-  });
-  
-  const { isLoading: isApprovalConfirming, isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({
-    hash: approvalHash,
-  });
-  
-  const { isLoading: isFundingConfirming, isSuccess: isFundingSuccess } = useWaitForTransactionReceipt({
-    hash: fundingHash,
-  });
+  const { isLoading: isRegisterConfirming, isSuccess: isRegisterSuccess } = useWaitForTransactionReceipt({ hash: registerHash });
+  const { isLoading: isApprovalConfirming, isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({ hash: approvalHash });
+  const { isLoading: isFundingConfirming, isSuccess: isFundingSuccess } = useWaitForTransactionReceipt({ hash: fundingHash });
 
-  // Register account function
-  const registerAccount = async (): Promise<void> => {
+  // --- Data Fetching and Transformation ---
+  const fetchData = async () => {
+    if (!isConnected || !address) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const [accountResponse, statsResponse, balancesResponse] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/wallet/account/${address}`),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/wallet/contract-stats`),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/wallet/balances/${address}`),
+      ]);
+
+
+      const accountData: BackendAccountInfo = await accountResponse.json();
+      const statsData: BackendContractStats = await statsResponse.json();
+      const balancesData: BackendWalletBalances = await balancesResponse.json();
+
+      // Transform and set state
+      setAccountInfo({
+        isRegistered: accountData.is_registered,
+        registrationTime: accountData.registration_time,
+        lastRedeemedSequence: accountData.last_redeemed_sequence,
+      });
+
+      setStats({
+        totalAccounts: statsData.total_accounts,
+        totalNativeBalance: statsData.total_native_balance,
+        totalTokenBalances: statsData.total_token_balances,
+      });
+
+      const newBalances: SmartPayBalance = {
+        XTZ: { wallet: '0', fastpay: '0', total: '0' },
+        USDT: { wallet: '0', fastpay: '0', total: '0' },
+        USDC: { wallet: '0', fastpay: '0', total: '0' },
+      };
+      balancesData.balances.forEach(token => {
+        const symbol = token.token_symbol as TokenSymbol;
+        if (newBalances[symbol]) {
+          newBalances[symbol] = {
+            wallet: token.wallet_balance,
+            fastpay: token.fastpay_balance,
+            total: token.total_balance,
+          };
+        }
+      });
+      setBalances(newBalances);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const registerAccount = async (): Promise<{ success: boolean, error?: string }> => {
     if (!address) throw new Error('No wallet connected');
     
     try {
@@ -161,19 +208,20 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         abi: FASTPAY_CONTRACT.abi,
         functionName: 'registerAccount',
       });
+      return { success: true };
     } catch (error) {
       setRegistrationStatus(prev => ({
         ...prev,
         isPending: false,
         error: error instanceof Error ? error.message : 'Registration failed',
       }));
+      return { success: false, error: error instanceof Error ? error.message : 'Registration failed' };
     }
   };
 
-  // Deposit to SmartPay function
   const depositToSmartPay = async (token: TokenSymbol, amount: string): Promise<{ success: boolean; txHash?: string }> => {
     if (!address) throw new Error('No wallet connected');
-    if (!isRegistered) throw new Error('Account not registered');
+    if (!accountInfo?.isRegistered) throw new Error('Account not registered');
 
     const tokenConfig = SUPPORTED_TOKENS[token];
     const amountWei = parseEther(amount);
@@ -214,59 +262,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       return { success: false };
     }
   };
-
-  // Refresh balances function using wagmi hooks
-  const refreshBalances = async (): Promise<void> => {
-    if (!address || !isConnected) return;
-
-    try {
-      setBalancesLoading(true);
-      setBalancesError(null);
-
-      // Build balances for each token
-      const newBalances: SmartPayBalance = {} as SmartPayBalance;
-      
-      for (const [symbol, config] of Object.entries(SUPPORTED_TOKENS)) {
-        const tokenSymbol = symbol as TokenSymbol;
-        
-        // Get wallet balance
-        let walletBalance = '0';
-        if (config.isNative) {
-          // Use native balance from hook
-          walletBalance = nativeBalance ? formatEther(nativeBalance.value) : '0';
-        } else {
-          // For ERC20 tokens, we'll use a simpler approach for now
-          try {
-            // This will be handled by separate contract reads in the future
-            walletBalance = '0'; // Placeholder - implement proper ERC20 balance reading
-          } catch {
-            walletBalance = '0';
-          }
-        }
-
-        // Get SmartPay balance - placeholder for now
-        const fastpayBalance = '0'; // This will be implemented with proper contract reads
-
-        newBalances[tokenSymbol] = {
-          wallet: walletBalance,
-          fastpay: fastpayBalance,
-          total: (parseFloat(walletBalance) + parseFloat(fastpayBalance)).toString(),
-        };
-      }
-
-      setBalances(newBalances);
-    } catch (error) {
-      setBalancesError(error instanceof Error ? error.message : 'Failed to load balances');
-    } finally {
-      setBalancesLoading(false);
-    }
-  };
-
-  // Clear errors function
+  
   const clearErrors = (): void => {
     setRegistrationStatus(prev => ({ ...prev, error: null }));
     setDepositStatus(prev => ({ ...prev, error: null }));
-    setBalancesError(null);
+    setError(null);
   };
 
   // Effects for handling transaction states
@@ -277,62 +277,42 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       isConfirming: isRegisterConfirming,
       isComplete: isRegisterSuccess,
       transactionHash: registerHash,
+      error: registerError ? registerError.message : null,
     }));
-  }, [isRegisterPending, isRegisterConfirming, isRegisterSuccess, registerHash]);
+  }, [isRegisterPending, isRegisterConfirming, isRegisterSuccess, registerHash, registerError]);
 
   useEffect(() => {
     if (isApprovalSuccess && depositStatus.currentStep === 'approving') {
-      // After approval success, proceed with funding
-      setDepositStatus(prev => ({ ...prev, currentStep: 'depositing' }));
+      // Logic for multi-step ERC20 deposit
     }
-  }, [isApprovalSuccess, depositStatus.currentStep]);
-
-  // Separate effect for handling the funding transaction after approval
+  }, [isApprovalSuccess]);
+  
   useEffect(() => {
-    if (depositStatus.currentStep === 'depositing' && !isFundingPending) {
-      // This would need to store the amount and token from the original deposit call
-      // For now, this is a placeholder for the ERC20 funding flow
+    if (isFundingSuccess || isRegisterSuccess) {
+      fetchData(); // Refresh all data after a successful transaction
     }
-  }, [depositStatus.currentStep, isFundingPending]);
-
-  useEffect(() => {
-    if (isFundingSuccess) {
-      setDepositStatus(prev => ({
-        ...prev,
-        isPending: false,
-        isConfirming: false,
-        currentStep: 'completed',
-      }));
-      
-      // Refresh balances after successful funding
-      refreshBalances();
-    }
-  }, [isFundingSuccess]);
+  }, [isFundingSuccess, isRegisterSuccess]);
 
   // Refresh data when account changes
   useEffect(() => {
     if (isConnected && address) {
-      refreshBalances();
-      refetchRegistration();
-      refetchAccountInfo();
-      refetchNativeBalance();
+      fetchData();
     }
   }, [isConnected, address]);
 
   const contextValue: WalletContextType = {
     isConnected,
     address,
-    isRegistered: Boolean(isRegistered),
     accountInfo,
+    balances,
+    stats,
+    loading,
+    error,
+    fetchData,
     registrationStatus,
     registerAccount,
-    balances,
-    balancesLoading,
-    balancesError,
-    refreshBalances,
     depositStatus,
     depositToSmartPay,
-    recentDeposits,
     clearErrors,
   };
 
