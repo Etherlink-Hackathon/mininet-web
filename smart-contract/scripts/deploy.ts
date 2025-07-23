@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   console.log("MeshPay Authority Manager deployed to:", authorityManagerAddress);
 
   // Get initial contract state
-  const totalAccounts = await fastPay.totalAccounts();
+  const totalAccounts = (await fastPay.getRegisteredAccounts()).length;
   const lastTransactionIndex = await fastPay.lastTransactionIndex();
 
   console.log("========================================");
