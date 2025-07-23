@@ -55,6 +55,7 @@ describe("MeshPayMVP", function () {
       expect(await fastPay.isAccountRegistered(account1.address)).to.be.true;
       const accounts = await fastPay.getRegisteredAccounts();
       expect(accounts.length).to.equal(1);
+      expect(accounts[0]).to.equal(account1.address);
     });
 
     it("should prevent double registration", async function () {
@@ -446,6 +447,23 @@ describe("MeshPayMVP", function () {
       await token.connect(account2).approve(await fastPay.getAddress(), INITIAL_BALANCE);
       await expect(fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"))).to.not.be.reverted;
       await expect(fastPay.connect(account2).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"))).to.not.be.reverted;
+    });
+
+    it("should return all registered accounts", async function () {
+      // Register multiple accounts via funding
+      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      await token.connect(account2).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      await token.connect(account3).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      
+      await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
+      await fastPay.connect(account2).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
+      await fastPay.connect(account3).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
+      
+      const registeredAccounts = await fastPay.getRegisteredAccounts();
+      expect(registeredAccounts.length).to.equal(3);
+      expect(registeredAccounts).to.include(account1.address);
+      expect(registeredAccounts).to.include(account2.address);
+      expect(registeredAccounts).to.include(account3.address);
     });
   });
 
