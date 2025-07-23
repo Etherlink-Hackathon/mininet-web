@@ -1,19 +1,19 @@
-import {
-  useReadContract,
-  useWriteContract,
-  useWaitForTransactionReceipt,
+import { 
+  useReadContract, 
+  useWriteContract, 
+  useWaitForTransactionReceipt, 
   useAccount,
   useChainId,
   useBalance,
 } from 'wagmi';
 import { parseUnits, formatUnits, type Address } from 'viem';
-import {
+import { 
   MESHPAY_CONTRACT,
-  SUPPORTED_TOKENS,
-  ERC20_CONTRACT,
-  NATIVE_TOKEN,
+  SUPPORTED_TOKENS, 
+  ERC20_CONTRACT, 
+  NATIVE_TOKEN, 
   getContractAddresses,
-  type SupportedToken
+  type SupportedToken 
 } from '../config/contracts';
 import { useState, useEffect } from 'react';
 
@@ -176,16 +176,16 @@ export function useApproveToken() {
   const chainId = useChainId();
   const contractAddresses = getContractAddresses();
   const { address } = useAccount();
-
+  
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-
+  
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
 
   const approveToken = async (tokenSymbol: Exclude<TokenSymbol, 'XTZ'>, amount: string) => {
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
-
+    
     if (tokenConfig.isNative) {
       throw new Error('Native tokens do not require approval');
     }
@@ -196,7 +196,7 @@ export function useApproveToken() {
 
     try {
       const parsedAmount = parseUnits(amount, tokenConfig.decimals);
-
+      
       await writeContract({
         address: tokenConfig.address,
         abi: ERC20_CONTRACT.abi,
@@ -225,16 +225,16 @@ export function useApproveToken() {
  */
 export function useDepositToMeshPay() {
   const contractAddresses = getContractAddresses();
-
+  
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-
+  
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
 
   const deposit = async (tokenSymbol: Exclude<TokenSymbol, 'XTZ'>, amount: string) => {
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
-
+    
     if (tokenConfig.isNative) {
       throw new Error('Use depositNativeToMeshPay for XTZ deposits');
     }
@@ -273,9 +273,9 @@ export function useDepositToMeshPay() {
 export function useDepositNativeToMeshPay() {
   const chainId = useChainId();
   const contractAddresses = getContractAddresses();
-
+  
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-
+  
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
@@ -287,7 +287,7 @@ export function useDepositNativeToMeshPay() {
 
     try {
       const parsedAmount = parseUnits(amount, SUPPORTED_TOKENS.XTZ.decimals);
-
+      
       await writeContract({
         address: contractAddresses.meshpay,
         abi: MESHPAY_CONTRACT.abi,
@@ -380,8 +380,8 @@ export function useDepositFlow() {
       await deposit(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
     }
   };
-
-  return {
+    
+    return { 
     initiateDeposit,
     isLoading: isApprovePending || isDepositPending || isNativeDepositPending,
     isApprovePending,

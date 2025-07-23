@@ -66,9 +66,6 @@ contract MeshPayMVP is ReentrancyGuard {
     /// Array to track all registered account addresses
     address[] private registeredAccounts;
     
-    /// Mapping to check if an account is in the registeredAccounts array
-    mapping(address => bool) private isAccountRegistered;
-
     /// @dev Events matching original MeshPay design
     event AccountRegistered(address indexed account, uint256 timestamp);
     event FundingCompleted(address indexed sender, address indexed token, uint256 amount, uint256 transactionIndex);
@@ -119,32 +116,13 @@ contract MeshPayMVP is ReentrancyGuard {
             accounts[user].registrationTime = block.timestamp;
             accounts[user].lastRedeemedSequence = 0;
             
-            // Add to registered accounts array if not already there
-            if (!isAccountRegistered[user]) {
-                registeredAccounts.push(user);
-                isAccountRegistered[user] = true;
-            }
-
+            // Add to registered accounts array
+            registeredAccounts.push(user);
+            
             emit AccountRegistered(user, block.timestamp);
         }
     }
 
-    /**
-     * @dev Register a new MeshPay account (free registration)
-     */
-    function registerAccount() external {
-        if (accounts[msg.sender].registered) revert AccountAlreadyRegistered();
-
-        accounts[msg.sender].registered = true;
-        accounts[msg.sender].registrationTime = block.timestamp;
-        accounts[msg.sender].lastRedeemedSequence = 0;
-        
-        // Add to registered accounts array
-        registeredAccounts.push(msg.sender);
-        isAccountRegistered[msg.sender] = true;
-
-        emit AccountRegistered(msg.sender, block.timestamp);
-    }
 
     /**
      * @dev Check if an account is registered with MeshPay
@@ -377,76 +355,13 @@ contract MeshPayMVP is ReentrancyGuard {
         return token == NATIVE_TOKEN;
     }
 
-    /**
-     * @dev Get all registered accounts with their balances for specified tokens
-     * @param tokens Array of token addresses to get balances for
-     * @return accountAddresses Array of all registered account addresses
-     * @return accountBalances 2D array where accountBalances[i][j] is balance of account i for token j
-     */
-    function getAccounts(address[] calldata tokens) external view returns (
-        address[] memory accountAddresses,
-        uint256[][] memory accountBalances
-    ) {
-        accountAddresses = new address[](registeredAccounts.length);
-        accountBalances = new uint256[][](registeredAccounts.length);
-        
-        for (uint256 i = 0; i < registeredAccounts.length; i++) {
-            address accountAddr = registeredAccounts[i];
-            accountAddresses[i] = accountAddr;
-            
-            // Initialize balance array for this account
-            accountBalances[i] = new uint256[](tokens.length);
-            
-            // Get balances for all specified tokens
-            for (uint256 j = 0; j < tokens.length; j++) {
-                accountBalances[i][j] = accounts[accountAddr].balances[tokens[j]];
-            }
-        }
-        
-        return (accountAddresses, accountBalances);
-    }
     
     /**
-     * @dev Get all registered accounts with their balances for native token and specified ERC20 tokens
-     * @param erc20Tokens Array of ERC20 token addresses to get balances for
-     * @return accountAddresses Array of all registered account addresses
-     * @return nativeBalances Array of native token balances for each account
-     * @return erc20Balances 2D array where erc20Balances[i][j] is balance of account i for ERC20 token j
+     * @dev Get all registered account addresses
+     * @return address[] Array of all registered account addresses
      */
-    function getAccountsWithNative(address[] calldata erc20Tokens) external view returns (
-        address[] memory accountAddresses,
-        uint256[] memory nativeBalances,
-        uint256[][] memory erc20Balances
-    ) {
-        accountAddresses = new address[](registeredAccounts.length);
-        nativeBalances = new uint256[](registeredAccounts.length);
-        erc20Balances = new uint256[][](registeredAccounts.length);
-        
-        for (uint256 i = 0; i < registeredAccounts.length; i++) {
-            address accountAddr = registeredAccounts[i];
-            accountAddresses[i] = accountAddr;
-            
-            // Get native token balance
-            nativeBalances[i] = accounts[accountAddr].balances[NATIVE_TOKEN];
-            
-            // Initialize ERC20 balance array for this account
-            erc20Balances[i] = new uint256[](erc20Tokens.length);
-            
-            // Get balances for all specified ERC20 tokens
-            for (uint256 j = 0; j < erc20Tokens.length; j++) {
-                erc20Balances[i][j] = accounts[accountAddr].balances[erc20Tokens[j]];
-            }
-        }
-        
-        return (accountAddresses, nativeBalances, erc20Balances);
-    }
-    
-    /**
-     * @dev Get total number of registered accounts
-     * @return uint256 The total number of registered accounts
-     */
-    function getTotalAccounts() external view returns (uint256) {
-        return registeredAccounts.length;
+    function getRegisteredAccounts() external view returns (address[] memory) {
+        return registeredAccounts;
     }
 
     /**

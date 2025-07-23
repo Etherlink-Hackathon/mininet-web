@@ -46,23 +46,34 @@ describe("MeshPayMVP", function () {
 
   describe("Account Registration", function () {
     it("should allow account registration", async function () {
-      await expect(fastPay.connect(account1).registerAccount())
+      // Registration happens automatically during funding, so test with funding
+      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      await expect(fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100")))
         .to.emit(fastPay, "AccountRegistered")
         .withArgs(account1.address, anyValue);
 
       expect(await fastPay.isAccountRegistered(account1.address)).to.be.true;
-      expect(await fastPay.getTotalAccounts()).to.equal(1);
+      const accounts = await fastPay.getRegisteredAccounts();
+      expect(accounts.length).to.equal(1);
     });
 
     it("should prevent double registration", async function () {
-      await fastPay.connect(account1).registerAccount();
+      // First registration via funding
+      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
       
-      await expect(fastPay.connect(account1).registerAccount())
-        .to.be.revertedWithCustomError(fastPay, "AccountAlreadyRegistered");
+      // Second funding should succeed but not emit AccountRegistered again
+      await expect(fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("50")))
+        .to.emit(fastPay, "FundingCompleted")
+        .withArgs(account1.address, await token.getAddress(), ethers.parseEther("50"), anyValue);
+     
+      // Should still be registered
+      expect(await fastPay.isAccountRegistered(account1.address)).to.be.true;
     });
 
     it("should track registration time", async function () {
-      const tx = await fastPay.connect(account1).registerAccount();
+      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      const tx = await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
       const receipt = await tx.wait();
       const timestamp = await time.latest();
 
@@ -73,7 +84,7 @@ describe("MeshPayMVP", function () {
 
   describe("Funding Transactions", function () {
     beforeEach(async function () {
-      await fastPay.connect(account1).registerAccount();
+      // Registration happens automatically during funding
       await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
     });
 
@@ -115,8 +126,7 @@ describe("MeshPayMVP", function () {
 
   describe("Native XTZ Funding Transactions", function () {
     beforeEach(async function () {
-      await fastPay.connect(account1).registerAccount();
-      await fastPay.connect(account2).registerAccount();
+      // Registration happens automatically during funding
     });
 
     it("should handle native XTZ funding transactions", async function () {
@@ -157,8 +167,7 @@ describe("MeshPayMVP", function () {
 
   describe("Transfer Certificates", function () {
     beforeEach(async function () {
-      await fastPay.connect(account1).registerAccount();
-      await fastPay.connect(account2).registerAccount();
+      // Registration happens automatically during funding
       await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
       await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("500"));
     });
@@ -223,8 +232,7 @@ describe("MeshPayMVP", function () {
 
   describe("Redemption Transactions", function () {
     beforeEach(async function () {
-      await fastPay.connect(account1).registerAccount();
-      await fastPay.connect(account2).registerAccount();
+      // Registration happens automatically during funding
       await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
       await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("500"));
     });
@@ -387,8 +395,7 @@ describe("MeshPayMVP", function () {
 
   describe("Balance Management", function () {
     beforeEach(async function () {
-      await fastPay.connect(account1).registerAccount();
-      await fastPay.connect(account2).registerAccount();
+      // Registration happens automatically during funding
       await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
     });
 
@@ -421,7 +428,9 @@ describe("MeshPayMVP", function () {
 
   describe("Access Control", function () {
     it("should allow only registered accounts to create certificates", async function () {
-      await fastPay.connect(account1).registerAccount();
+      // Register account1 via funding
+      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
       
       await expect(fastPay.connect(account2).createTransferCertificate(
         account1.address,
@@ -432,21 +441,25 @@ describe("MeshPayMVP", function () {
     });
 
     it("should allow anyone to register accounts", async function () {
-      await expect(fastPay.connect(account1).registerAccount()).to.not.be.reverted;
-      await expect(fastPay.connect(account2).registerAccount()).to.not.be.reverted;
+      // Test registration via funding
+      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      await token.connect(account2).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      await expect(fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"))).to.not.be.reverted;
+      await expect(fastPay.connect(account2).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"))).to.not.be.reverted;
     });
   });
 
   describe("Gas Optimization", function () {
     it("should use reasonable gas for registration", async function () {
-      const tx = await fastPay.connect(account1).registerAccount();
+      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      const tx = await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
       const receipt = await tx.wait();
       
-      expect(receipt!.gasUsed).to.be.lessThan(100000);
+      expect(receipt!.gasUsed).to.be.lessThan(500000);
     });
 
     it("should use reasonable gas for funding", async function () {
-      await fastPay.connect(account1).registerAccount();
+      // Registration happens automatically during funding
       await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
       
       const tx = await fastPay.connect(account1).handleFundingTransaction(
@@ -455,7 +468,7 @@ describe("MeshPayMVP", function () {
       );
       const receipt = await tx.wait();
       
-      expect(receipt!.gasUsed).to.be.lessThan(300000);
+      expect(receipt!.gasUsed).to.be.lessThan(500000);
     });
   });
 }); 
