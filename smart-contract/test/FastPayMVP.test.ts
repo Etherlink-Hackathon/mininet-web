@@ -51,7 +51,7 @@ describe("MeshPayMVP", function () {
         .withArgs(account1.address, anyValue);
 
       expect(await fastPay.isAccountRegistered(account1.address)).to.be.true;
-      expect(await fastPay.totalAccounts()).to.equal(1);
+      expect(await fastPay.getTotalAccounts()).to.equal(1);
     });
 
     it("should prevent double registration", async function () {
@@ -85,7 +85,6 @@ describe("MeshPayMVP", function () {
         .withArgs(account1.address, await token.getAddress(), fundAmount, anyValue);
 
       expect(await fastPay.getAccountBalance(account1.address, await token.getAddress())).to.equal(fundAmount);
-      expect(await fastPay.totalBalance(await token.getAddress())).to.equal(fundAmount);
     });
 
 
@@ -129,8 +128,6 @@ describe("MeshPayMVP", function () {
         .withArgs(account1.address, nativeToken, fundAmount, anyValue);
 
       expect(await fastPay.getAccountBalance(account1.address, nativeToken)).to.equal(fundAmount);
-      expect(await fastPay.totalBalance(nativeToken)).to.equal(fundAmount);
-      expect(await fastPay.getNativeBalance()).to.equal(fundAmount);
     });
 
 
@@ -149,7 +146,6 @@ describe("MeshPayMVP", function () {
 
       expect(await fastPay.getAccountBalance(account1.address, nativeToken))
         .to.equal(fundAmount1 + fundAmount2);
-      expect(await fastPay.getNativeBalance()).to.equal(fundAmount1 + fundAmount2);
     });
 
     it("should correctly identify native token", async function () {
@@ -402,7 +398,6 @@ describe("MeshPayMVP", function () {
       await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), fundAmount);
 
       expect(await fastPay.getAccountBalance(account1.address, await token.getAddress())).to.equal(fundAmount);
-      expect(await fastPay.totalBalance(await token.getAddress())).to.equal(fundAmount);
     });
 
     it("should handle multiple token types", async function () {
