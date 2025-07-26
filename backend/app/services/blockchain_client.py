@@ -252,7 +252,7 @@ class BlockchainClient:
         
         try:
             # Get total accounts
-            total_accounts = self.meshpay_contract.functions.totalAccounts().call()
+            total_accounts = len(self.meshpay_contract.functions.getRegisteredAccounts().call())
             
             # Get total balances for each token
             total_token_balances = {}
@@ -260,12 +260,15 @@ class BlockchainClient:
             
             for token_symbol, token_config in SUPPORTED_TOKENS.items():
                 token_address = Web3.to_checksum_address(token_config['address'])
-                total_balance_wei = self.meshpay_contract.functions.totalBalance(token_address).call()
-                total_balance = self._wei_to_human(total_balance_wei, token_config['decimals'])
                 
+                total_balance = "0"
                 if token_config['is_native']:
+                    total_balance_wei = self.w3.eth.get_balance(token_address)
+                    total_balance = self._wei_to_human(total_balance_wei, token_config['decimals'])
                     total_native_balance = total_balance
                 else:
+                    total_balance_wei = self.meshpay_contract.functions.balanceOf(token_address).call()
+                    total_balance = self._wei_to_human(total_balance_wei, token_config['decimals'])
                     total_token_balances[token_symbol] = total_balance
             
             return ContractStats(
@@ -284,7 +287,7 @@ class BlockchainClient:
             return False
         
         try:
-            address = Web3.to_checksum_address(address)
+            address = Web3.balanceOf(address)
             return self.meshpay_contract.functions.isAccountRegistered(address).call()
         except Exception as e:
             logger.error(f"Failed to check registration for {address}: {e}")
@@ -351,7 +354,7 @@ class BlockchainClient:
                 
                 if self.meshpay_contract:
                     # Test contract call
-                    total_accounts = self.meshpay_contract.functions.totalAccounts().call()
+                    total_accounts = len(self.meshpay_contract.functions.getRegisteredAccounts().call())
                     health_status['meshpay_contract'] = True
                     health_status['total_accounts'] = total_accounts
                     

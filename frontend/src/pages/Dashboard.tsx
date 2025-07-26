@@ -54,7 +54,6 @@ const Dashboard: React.FC = () => {
     if (isConnected && address) {
       fetchData();
     }
-    console.log(isConnected, address, balances);
   }, [isConnected, address]);
 
   const [stats, setStats] = useState<DashboardStats>({

@@ -123,16 +123,6 @@ contract MeshPayMVP is ReentrancyGuard {
         }
     }
 
-
-    /**
-     * @dev Check if an account is registered with MeshPay
-     * @param account The account address to check
-     * @return bool Whether the account is registered
-     */
-    function isAccountRegistered(address account) external view returns (bool) {
-        return accounts[account].registered;
-    }
-
     /**
      * @dev Get account information
      * @param account The account address

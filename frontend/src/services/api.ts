@@ -48,6 +48,7 @@ class ApiService {
 
   async getShards(): Promise<ShardInfo[]> {
     const { data } = await this.client.get<ShardInfo[]>('/api/shards');
+    console.log('data', data);
     return data;
   }
 
