@@ -11,7 +11,7 @@ Phase 1 of the Mesh Network Discovery and Communication Bridge has been successf
 
 **Key Features**:
 - ✅ IEEE 802.11s mesh network with NAT gateway support
-- ✅ MeshInternetBridge HTTP server for protocol translation
+- ✅ Bridge HTTP server for protocol translation
 - ✅ Authority registration and discovery
 - ✅ Real-time gateway health monitoring
 - ✅ Graceful error handling and fallback mechanisms
@@ -144,7 +144,7 @@ python scripts/test_mesh_gateway.py
                                               │ HTTP
                                               ▼
 ┌─────────────────┐    HTTP Bridge   ┌──────────────────┐
-│  Internet/WAN   │ ◄──────────────► │ MeshInternetBridge │
+│  Internet/WAN   │ ◄──────────────► │ Bridge │
 └─────────────────┘                 └──────────────────┘
                                               │
                                               │ TCP/MeshPay

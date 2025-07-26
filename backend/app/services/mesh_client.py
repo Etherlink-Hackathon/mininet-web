@@ -125,20 +125,98 @@ class MeshClient:  # pylint: disable=too-few-public-methods
         logger.info("authority_discovery_success", count=len(self._cache))
         return list(self._cache.values())
 
-    async def send_transfer(self, authority: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    async def send_transfer(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Send a transfer request to the mesh network via the gateway bridge.
+        
+        This method sends the transfer request to the gateway bridge's /transfer endpoint,
+        which will forward it to all authorities in the mesh network.
+        """
         http = self._require_client()
-        if body.get("token") not in SUPPORTED_TOKENS:
-            raise MeshClientError(f"Unsupported token {body.get('token')}")
-        payload = {**body, "timestamp": time.time()}
+        
+        # Validate required fields
+        required_fields = ["sender", "recipient", "token_address", "amount"]
+        for field in required_fields:
+            if field not in body:
+                raise MeshClientError(f"Missing required field: {field}")
+        
+        # Validate amount
         try:
-            resp = await http.post(
-                f"{self.gateway_url}/authorities/{authority}/transfer", json=payload
-            )
+            amount = int(body["amount"])
+            if amount <= 0:
+                raise MeshClientError("Amount must be positive")
+        except (ValueError, TypeError):
+            raise MeshClientError("Amount must be a valid integer")
+        
+        # Validate token address
+        token_address = body.get("token_address")
+        if not token_address or not token_address.startswith("0x"):
+            raise MeshClientError("Invalid token address format")
+        
+        # Check if token is supported (optional validation)
+        if token_address not in SUPPORTED_TOKENS:
+            logger.warning(f"Token {token_address} not in SUPPORTED_TOKENS list")
+        
+        payload = {**body, "timestamp": time.time()}
+        
+        try:
+            # Call the bridge's /transfer endpoint which triggers do_POST transfer
+            resp = await http.post(f"{self.gateway_url}/transfer", json=payload)
             resp.raise_for_status()
             return resp.json()
         except Exception as exc:  # pylint: disable=broad-except
-            logger.error("transfer_failed", authority=authority, error=str(exc))
-            raise MeshClientError("Transfer failed") from exc
+            logger.error("transfer_failed", error=str(exc))
+            raise MeshClientError(f"Transfer failed: {str(exc)}") from exc
+
+    async def send_transfer_to_authority(self, authority: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Send a transfer request to a specific authority in the mesh network.
+        
+        This method sends the transfer request to a specific authority through
+        the mesh network gateway.
+        """
+        http = self._require_client()
+        
+        # Validate required fields
+        required_fields = ["sender", "recipient", "token_address", "amount"]
+        for field in required_fields:
+            if field not in body:
+                raise MeshClientError(f"Missing required field: {field}")
+        
+        # Validate amount
+        try:
+            amount = int(body["amount"])
+            if amount <= 0:
+                raise MeshClientError("Amount must be positive")
+        except (ValueError, TypeError):
+            raise MeshClientError("Amount must be a valid integer")
+        
+        # Validate token address
+        token_address = body.get("token_address")
+        if not token_address or not token_address.startswith("0x"):
+            raise MeshClientError("Invalid token address format")
+        
+        payload = {**body, "timestamp": time.time()}
+        
+        try:
+            # Call the bridge's /authorities/{authority}/transfer endpoint
+            resp = await http.post(f"{self.gateway_url}/authorities/{authority}/transfer", json=payload)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("transfer_to_authority_failed", authority=authority, error=str(exc))
+            raise MeshClientError(f"Transfer to authority {authority} failed: {str(exc)}") from exc
+
+    async def get_health(self) -> Dict[str, Any]:
+        """Get health status from the gateway bridge."""
+        http = self._require_client()
+        try:
+            resp = await http.get(f"{self.gateway_url}/health")
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("health_check_failed", error=str(exc))
+            return {"status": "unhealthy", "error": str(exc)}
 
     async def send_confirmation(self, authority: str, body: Dict[str, Any]) -> Dict[str, Any]:
         http = self._require_client()

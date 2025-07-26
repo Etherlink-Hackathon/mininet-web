@@ -98,7 +98,7 @@ def create_mesh_network_with_internet(
     num_authorities: int = 5,
     num_clients: int = 3,
     enable_internet: bool = True
-) -> Tuple[Mininet_wifi, List[WiFiAuthority], List[Client], Optional[MeshInternetBridge]]:
+) -> Tuple[Mininet_wifi, List[WiFiAuthority], List[Client], Optional[Bridge]]:
     """Create IEEE 802.11s mesh network with internet gateway."""
     
     # Create standard mesh network
@@ -118,11 +118,11 @@ def create_mesh_network_with_internet(
         nat = net.addNAT(name='nat0', connect=ap_inet, ip='10.0.0.254/8')
         
         # Create mesh-internet bridge service
-        bridge = MeshInternetBridge(port=8080)
+        bridge = Bridge(port=8080)
     
     return net, authorities, clients, bridge
 
-class MeshInternetBridge:
+class Bridge:
     """HTTP bridge that enables web backend to communicate with mesh authorities."""
     
     def start_bridge_server(self, nat_node):
@@ -437,7 +437,7 @@ echo "  • Mesh CLI: Connect to the mesh demo process"
 
 ### Week 1: Gateway Infrastructure 🌉
 - [ ] Implement enhanced mesh demo with NAT gateway
-- [ ] Create MeshInternetBridge with HTTP server
+- [ ] Create Bridge with HTTP server
 - [ ] Configure internet routing for mesh nodes
 - [ ] Test gateway connectivity and authority reachability
 
