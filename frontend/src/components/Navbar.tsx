@@ -58,16 +58,6 @@ const Navbar: React.FC = () => {
   // Navigation categories with dropdowns
   const navCategories = [
     {
-      id: 'overview',
-      label: 'Overview',
-      icon: <OverviewIcon />,
-      items: [
-        { path: '/', label: 'Dashboard', icon: <DashboardIcon />, description: 'Main control panel' },
-        // Future: Analytics page
-        // { path: '/analytics', label: 'Analytics', icon: <AnalyticsIcon />, description: 'Network statistics' },
-      ]
-    },
-    {
       id: 'network',
       label: 'Network',
       icon: <NetworkIcon />,
@@ -84,8 +74,6 @@ const Navbar: React.FC = () => {
       icon: <WalletMainIcon />,
       items: [
         { path: '/wallet', label: 'Balance', icon: <WalletIcon />, description: 'View balances' },
-        { path: '/wallet?tab=deposit', label: 'Deposit', icon: <DepositIcon />, description: 'Fund MeshPay account' },
-        { path: '/authority?action=stake', label: 'Stake', icon: <StakeIcon />, description: 'Stake to become authority' },
       ]
     },
     {
@@ -94,8 +82,6 @@ const Navbar: React.FC = () => {
       icon: <TransactionMainIcon />,
       items: [
         { path: '/transactions', label: 'History', icon: <TransactionsIcon />, description: 'Transaction history' },
-        { path: '/transactions?tab=certificates', label: 'Certificates', icon: <CertificateIcon />, description: 'Payment certificates' },
-        // { path: '/payments', label: 'Send Payment', icon: <PaymentIcon />, description: 'Make payments' },
       ]
     }
   ];

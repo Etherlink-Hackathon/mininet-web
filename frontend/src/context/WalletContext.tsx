@@ -7,55 +7,11 @@ import {
   MeshPayBalance,
   useDepositFlow,
 } from '../services/meshpay';
-
-// --- API Response Types (from backend) ---
-interface BackendAccountInfo {
-  address: string;
-  is_registered: boolean;
-  registration_time: number;
-  last_redeemed_sequence: number;
-}
-
-interface BackendTokenBalance {
-  token_symbol: string;
-  token_address: string;
-  wallet_balance: string;
-  meshpay_balance: string;
-  total_balance: string;
-  decimals: number;
-}
-
-interface BackendWalletBalances {
-  address: string;
-  balances: BackendTokenBalance[];
-}
-
-interface BackendContractStats {
-  total_accounts: number;
-  total_native_balance: string;
-  total_token_balances: Record<string, string>;
-}
+import { apiService } from '../services/api';
+import { cacheService } from '../services/cacheService';
+import { AccountInfo, TokenBalance } from '../types/api';
 
 // --- Clean Context State Types ---
-interface AccountInfo {
-  isRegistered: boolean;
-  registrationTime: number;
-  lastRedeemedSequence: number;
-}
-
-interface ContractStats {
-  totalAccounts: number;
-  totalNativeBalance: string;
-  totalTokenBalances: Record<string, string>;
-}
-
-interface RegistrationStatus {
-  isPending: boolean;
-  isConfirming: boolean;
-  isComplete: boolean;
-  error: string | null;
-  transactionHash?: string;
-}
 
 interface DepositStatus {
   isPending: boolean;
@@ -71,19 +27,23 @@ interface WalletContextType {
   address: Address | undefined;
   
   // Unified State
-  accountInfo: AccountInfo | null;
-  balances: MeshPayBalance | null;
-  stats: ContractStats | null;
+  accountInfo: AccountInfo;
   loading: boolean;
-    error: string | null;
-  fetchData: () => Promise<void>;
+  setLoading: (loading: boolean) => void;
+  error: string | null;
+  fetchData: (forceRefresh?: boolean) => Promise<void>;
 
   // Deposits
   depositStatus: DepositStatus;
-  depositToMeshPay: (token: TokenSymbol, amount: string) => Promise<{ success: boolean; txHash?: string }>;
+  setDepositStatus: (status: DepositStatus) => void;
+  depositToMeshPay: (token: TokenSymbol, amount: string) => Promise<void>;
   
   // Error management
   clearErrors: () => void;
+  
+  // Cache management
+  getCachedBalance: () => AccountInfo | null;
+  updateCachedBalance: (tokenAddress: string, amount: string) => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -108,9 +68,19 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const walletAddress = primaryWallet?.address;
 
   // --- State for wallet data ---
-  const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
-  const [balances, setBalances] = useState<MeshPayBalance | null>(null);
-  const [stats, setStats] = useState<ContractStats | null>(null);
+  const [accountInfo, setAccountInfo] = useState<AccountInfo>({
+    address: '',
+    sequence_number: 0,
+    is_registered: false,
+    registration_time: 0,
+    last_redeemed_sequence: 0,
+    balances: {
+      [SUPPORTED_TOKENS["XTZ"].address]: { token_symbol: 'XTZ', token_address: SUPPORTED_TOKENS["XTZ"].address, wallet_balance: 0, meshpay_balance: 0, total_balance: 0 },
+      [SUPPORTED_TOKENS["WTZ"].address]: { token_symbol: 'WTZ', token_address: SUPPORTED_TOKENS["WTZ"].address, wallet_balance: 0, meshpay_balance: 0, total_balance: 0 },
+      [SUPPORTED_TOKENS["USDT"].address]: { token_symbol: 'USDT', token_address: SUPPORTED_TOKENS["USDT"].address, wallet_balance: 0, meshpay_balance: 0, total_balance: 0 },
+      [SUPPORTED_TOKENS["USDC"].address]: { token_symbol: 'USDC', token_address: SUPPORTED_TOKENS["USDC"].address, wallet_balance: 0, meshpay_balance: 0, total_balance: 0 },
+    },
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -142,47 +112,17 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     setError(null);
     
     try {
-      const [accountResponse, statsResponse, balancesResponse] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/wallet/account/${address}`),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/wallet/contract-stats`),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/api/wallet/balances/${address}`),
-      ]);
+      const accountResponse = await apiService.getWalletAccount(address);
+      const accountData: AccountInfo = accountResponse;
 
-
-      const accountData: BackendAccountInfo = await accountResponse.json();
-      const statsData: BackendContractStats = await statsResponse.json();
-      const balancesData: BackendWalletBalances = await balancesResponse.json();
-
-      // Transform and set state
       setAccountInfo({
-        isRegistered: accountData.is_registered,
-        registrationTime: accountData.registration_time,
-        lastRedeemedSequence: accountData.last_redeemed_sequence,
+        address: accountData.address,
+        balances: accountData.balances,
+        sequence_number: accountData.sequence_number,
+        is_registered: accountData.is_registered,
+        registration_time: accountData.registration_time,
+        last_redeemed_sequence: accountData.last_redeemed_sequence,
       });
-
-      setStats({
-        totalAccounts: statsData.total_accounts,
-        totalNativeBalance: statsData.total_native_balance,
-        totalTokenBalances: statsData.total_token_balances,
-      });
-
-      const newBalances: MeshPayBalance = {
-        XTZ: { wallet: '0', meshpay: '0', total: '0' },
-        WTZ: { wallet: '0', meshpay: '0', total: '0' },
-        USDT: { wallet: '0', meshpay: '0', total: '0' },
-        USDC: { wallet: '0', meshpay: '0', total: '0' },
-      };
-      balancesData.balances.forEach(token => {
-        const symbol = token.token_symbol as TokenSymbol;
-        if (newBalances[symbol]) {
-          newBalances[symbol] = {
-            wallet: token.wallet_balance,
-            meshpay: token.meshpay_balance,
-            total: token.total_balance,
-          };
-        }
-      });
-      setBalances(newBalances);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
@@ -190,9 +130,57 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setLoading(false);
     }
   };
+
+  /**
+   * Get cached balance data as fallback
+   */
+  const getCachedBalance = (): AccountInfo | null => {
+    if (!address) return null;
+    
+    try {
+      const cached = cacheService.get<AccountInfo>('walletAccount');
+      return cached;
+    } catch (error) {
+      console.warn('Failed to get cached balance:', error);
+      return null;
+    }
+  };
   
-  const depositToMeshPay = async (token: TokenSymbol, amount: string): Promise<{ success: boolean; txHash?: string }> => {
-    if (!walletAddress) throw new Error('No wallet connected');
+  const updateCachedBalance = (tokenAddress: string, amount: string) => {
+    cacheService.set('walletAccount', {
+      ...accountInfo,
+      balances: {
+        ...accountInfo.balances,
+        ...(tokenAddress in accountInfo.balances
+          ? {
+              [tokenAddress]: {
+                ...accountInfo.balances[tokenAddress as keyof typeof accountInfo.balances],
+                wallet_balance: Math.max(
+                  0,
+                  Number(accountInfo.balances[tokenAddress as keyof typeof accountInfo.balances].wallet_balance) - parseFloat(amount)
+                ),
+                meshpay_balance:
+                  (Number(accountInfo.balances[tokenAddress as keyof typeof accountInfo.balances].meshpay_balance) + parseFloat(amount)),
+                total_balance: accountInfo.balances[tokenAddress as keyof typeof accountInfo.balances].total_balance,
+              },
+            }
+          : {}),
+      }
+    });
+  };
+
+  /**
+   * Initiates a deposit to the MeshPay contract.
+   *
+   * @param token - The symbol of the token to deposit.
+   * @param amount - The amount to deposit as a string.
+   * @returns An object containing the transaction hash if available.
+   * @throws Error if no wallet is connected or the MeshPay contract address is not configured.
+   */
+  const depositToMeshPay = async (token: TokenSymbol, amount: string): Promise<void> => {
+    if (!walletAddress) {
+      throw new Error('No wallet connected');
+    }
 
     // Ensure MeshPay contract address is configured
     if (MESHPAY_CONTRACT.address === '0x0000000000000000000000000000000000000000') {
@@ -209,7 +197,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       await initiateDeposit(token, amount);
 
-      return { success: true };
     } catch (err) {
       setDepositStatus(prev => ({
         ...prev,
@@ -218,8 +205,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         currentStep: 'idle',
         error: err instanceof Error ? err.message : 'Deposit failed',
       }));
-    
-      return { success: false };
     }
   };
   
@@ -233,7 +218,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   useEffect(() => {
     if (isDepositFlowSuccess) {
       setDepositStatus(prev => ({ ...prev, currentStep: 'completed' }));
-      fetchData(); // Refresh data
+      fetchData();
     }
   }, [isDepositFlowSuccess]);
 
@@ -280,14 +265,16 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     isConnected,
     address,
     accountInfo,
-    balances,
-    stats,
     loading,
+    setLoading,
     error,
     fetchData,
     depositStatus,
+    setDepositStatus,
     depositToMeshPay,
     clearErrors,
+    getCachedBalance,
+    updateCachedBalance,
   };
 
   return <WalletContext.Provider value={contextValue}>{children}</WalletContext.Provider>;

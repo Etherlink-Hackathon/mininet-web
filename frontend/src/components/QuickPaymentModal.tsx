@@ -155,8 +155,8 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
             >
               {shards.length > 0 ? (
                 shards.map((shard, index) => (
-                  <MenuItem key={index} value={shard.id || index}>
-                    Cluster {index + 1} ({shard.nodes?.length || 0} nodes)
+                  <MenuItem key={index} value={shard.shard_id || index}>
+                    {shard.shard_id} ({shard.authorities.length || 0} nodes)
                   </MenuItem>
                 ))
               ) : (
@@ -177,7 +177,7 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
           disabled={loading || !amount || !recipient || !selectedCluster}
           startIcon={loading ? <CircularProgress size={16} /> : <Send />}
         >
-          {loading ? 'Sending...' : `Send ${amount} ${SUPPORTED_TOKENS[token].symbol}`}
+          {loading ? 'Sending...' : `Send`}
         </Button>
       </DialogActions>
     </Dialog>

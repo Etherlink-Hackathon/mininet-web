@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -32,16 +32,79 @@ interface DepositModalProps {
 const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
   const {
     accountInfo,
-    balances,
     depositStatus,
+    setDepositStatus,
     depositToMeshPay,
     clearErrors,
+    getCachedBalance,
     fetchData,
+    updateCachedBalance,
   } = useWalletContext();
 
   const [token, setToken] = useState<TokenSymbol>('XTZ');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [balance, setBalance] = useState<any>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (
+      accountInfo &&
+      accountInfo.balances &&
+      SUPPORTED_TOKENS[token] &&
+      typeof SUPPORTED_TOKENS[token].address === 'string' &&
+      Object.prototype.hasOwnProperty.call(
+        accountInfo.balances,
+        SUPPORTED_TOKENS[token].address
+      )
+    ) {
+      setBalance(
+        accountInfo.balances[
+          SUPPORTED_TOKENS[token].address as keyof typeof accountInfo.balances
+        ]
+      );
+    } else {
+      setBalance(null);
+    }
+  }, [accountInfo, token]);
+
+  useEffect(() => {
+    if (depositStatus.currentStep === 'completed') {
+      setAmount('');
+      updateCachedBalance(SUPPORTED_TOKENS[token].address, amount);
+      refreshBalanceWithCache();
+    }
+  }, [depositStatus.currentStep]);
+
+  // Enhanced balance refresh with cache fallback
+  const refreshBalanceWithCache = async () => {
+    setIsRefreshing(true);
+    try {
+      // Try to get cached data first for immediate UI update
+      const cachedBalance = getCachedBalance();
+      if (
+        cachedBalance &&
+        cachedBalance.balances &&
+        SUPPORTED_TOKENS[token] &&
+        typeof SUPPORTED_TOKENS[token].address === 'string' &&
+        Object.prototype.hasOwnProperty.call(
+          cachedBalance.balances,
+          SUPPORTED_TOKENS[token].address
+        )
+      ) {
+        setBalance(
+          cachedBalance.balances[SUPPORTED_TOKENS[token].address as keyof typeof cachedBalance.balances]
+        );
+      }
+
+      // Then refresh from API
+      await fetchData();
+    } catch (error) {
+      console.warn('Failed to refresh balance:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const getSteps = () => {
     if (token === 'XTZ') {
@@ -64,7 +127,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
       setError('Amount must be greater than 0');
       return false;
     }
-    if (balances && balances[token] && parseFloat(amount) > parseFloat(balances[token].wallet)) {
+    if (accountInfo && accountInfo.balances && accountInfo.balances[token] && parseFloat(amount) > parseFloat(accountInfo.balances[token].wallet_balance.toString())) {
       setError('Insufficient wallet balance');
       return false;
     }
@@ -76,16 +139,20 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
     if (!validateForm()) return;
     
     clearErrors();
-    
-    const result = await depositToMeshPay(token, amount);
-    if (result.success) {
-      setAmount('');
-    }
+
+    await depositToMeshPay(token, amount);
   };
   
   const handleClose = () => {
     // Allow closing if transaction is completed or not pending
     if (depositStatus.isPending && depositStatus.currentStep !== 'completed') return;
+    setDepositStatus({
+      isPending: false,
+      isConfirming: false,
+      currentStep: 'idle',
+      error: null,
+      transactionHash: undefined,
+    });
     setAmount('');
     setError(null);
     clearErrors();
@@ -214,19 +281,21 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
             sx={{ mb: 2 }}
           />
 
-          {balances && balances[token] ? (
+          {balance ? (
             <Card variant="outlined" sx={{ mb: 2 }}>
               <CardContent sx={{ '&:last-child': { pb: 2 } }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Current Balances ({getTokenConfig(token).symbol})
-                </Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Current Balances ({getTokenConfig(token).symbol})
+                  </Typography>
+                </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <AccountBalanceWallet fontSize="small" />
                     <Typography variant="body2">Wallet:</Typography>
                   </Box>
                   <Typography variant="body2" fontWeight="medium">
-                    {formatBalance(balances[token].wallet)}
+                    {formatBalance(balance.wallet_balance.toString())}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -235,7 +304,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
                     <Typography variant="body2">MeshPay:</Typography>
                   </Box>
                   <Typography variant="body2" fontWeight="medium">
-                    {formatBalance(balances[token].meshpay)}
+                    {formatBalance(balance.meshpay_balance.toString())}
                   </Typography>
                 </Box>
               </CardContent>
@@ -245,7 +314,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
           )}
 
           <Typography variant="body2" color="text.secondary">
-            {accountInfo && !accountInfo.isRegistered && (
+            {accountInfo && !accountInfo.is_registered && (
               "Your account will be automatically registered with your first deposit. "
             )}
             {token === 'XTZ'

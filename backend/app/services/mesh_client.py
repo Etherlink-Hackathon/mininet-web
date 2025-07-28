@@ -84,13 +84,30 @@ class MeshClient:  # pylint: disable=too-few-public-methods
 
     # ------------------------------ shards API ----------------------------
 
-    _shards_cache: List[Dict[str, Any]] = []
+    async def get_wallet_balances(self, address: str) -> List[Dict[str, Any]]:
+        """Fetch wallet balances from gateway `/wallet/balances/{address}`."""
+        http = self._require_client()
+        try:
+            resp = await http.get(f"{self.gateway_url}/wallet/balances/{address}")
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("wallet_balances_fetch_failed", error=str(exc))
+            raise MeshClientError("Gateway unreachable for wallet balances") from exc
+
+    async def get_account_info(self, address: str) -> Dict[str, Any]:
+        """Fetch account info from gateway `/wallet/account/{address}`."""
+        http = self._require_client()
+        try:
+            resp = await http.get(f"{self.gateway_url}/wallet/account/{address}")
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("account_info_fetch_failed", error=str(exc))
+            raise MeshClientError("Gateway unreachable for account info") from exc
 
     async def get_shards(self, *, force: bool = False) -> List[Dict[str, Any]]:
         """Fetch shard list from gateway `/shards`."""
-        if self._shards_cache and not force:
-            return self._shards_cache
-
         http = self._require_client()
         try:
             resp = await http.get(f"{self.gateway_url}/shards")

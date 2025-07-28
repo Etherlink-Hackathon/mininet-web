@@ -92,32 +92,30 @@ export interface Certificate {
   certificate_hash: string;
 }
 
-export interface WalletBalance {
-  USDT: number;
-  USDC: number;
+export type TokenBalance = {
+  token_symbol: string;
+  token_address: string;
+  wallet_balance: number;
+  meshpay_balance: number;
+  total_balance: number;
 }
 
-// Enhanced balance interface for MeshPay integration
-export interface EnhancedWalletBalance {
-  USDT: {
-    wallet: number;      // Regular wallet balance
-    meshpay: number;     // MeshPay system balance  
-    total: number;       // Combined balance
-  };
-  USDC: {
-    wallet: number;
-    meshpay: number;
-    total: number;
-  };
+export type AccountInfo = {
+  address: string;
+  balances: Record<string, TokenBalance>;
+  sequence_number: number;
+  is_registered: boolean;
+  registration_time: number;
+  last_redeemed_sequence: number;
 }
 
-// MeshPay account registration status
-export interface MeshPayAccountStatus {
-  registered: boolean;
-  registrationTime?: number;
-  lastRedeemedSequence?: number;
-}
 
+
+export type WalletBalances = {
+  address: string;
+  balances: TokenBalance[];
+  total_value_usd: number;
+}
 // Deposit transaction data
 export interface DepositTransaction {
   token: 'XTZ' | 'USDT' | 'USDC';

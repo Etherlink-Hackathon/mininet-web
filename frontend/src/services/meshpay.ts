@@ -32,12 +32,6 @@ export interface MeshPayBalance {
   USDC: TokenBalance;
 }
 
-export interface AccountInfo {
-  registered: boolean;
-  registrationTime: number;
-  lastRedeemedSequence: number;
-}
-
 export interface DepositResult {
   success: boolean;
   error?: string;

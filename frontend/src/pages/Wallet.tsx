@@ -19,6 +19,7 @@ import {
   CircularProgress,
   LinearProgress,
   Divider,
+  IconButton,
 } from '@mui/material';
 import {
   AccountBalanceWallet,
@@ -46,15 +47,27 @@ const Wallet: React.FC = () => {
   
   const {
     accountInfo,
-    balances,
-    stats,
     loading,
+    setLoading,
     error,
     fetchData,
   } = useWalletContext();
 
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+
+  const loadWalletData = async () => {
+    try {
+      setLoading(true);
+      await fetchData();
+    } catch (error) {
+      console.error('Error loading wallet data:', error);
+    } finally {
+      setTimeout(() => {
+        setLoading(false);
+      }, 1000);
+    }
+  };
 
   useEffect(() => {
     // This can be used for fetching offline transaction history if needed
@@ -140,9 +153,9 @@ const Wallet: React.FC = () => {
       <Box mb={4}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h4" fontWeight={600}>Your Wallet</Typography>
-          <Button onClick={fetchData} variant="outlined" startIcon={<Refresh />} disabled={loading}>
-            {loading ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <IconButton onClick={loadWalletData} disabled={loading}>
+            <Refresh />
+          </IconButton>
         </Box>
         {loading && <LinearProgress sx={{ mb: 2 }} />}
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -155,22 +168,22 @@ const Wallet: React.FC = () => {
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <Box display="flex" alignItems="center" gap={1}>
-                  {accountInfo.isRegistered ? <CheckCircle color="success" /> : <ErrorIcon color="error" />}
+                  {accountInfo.is_registered ? <CheckCircle color="success" /> : <ErrorIcon color="error" />}
                   <Typography variant="body1">
-                    Status: {accountInfo.isRegistered ? 'Registered' : 'Not Registered'}
+                    Status: {accountInfo.is_registered ? 'Registered' : 'Not Registered'}
                   </Typography>
                 </Box>
               </Grid>
-              {accountInfo.isRegistered && (
+              {accountInfo.is_registered && (
                 <>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Registration Time: {new Date(accountInfo.registrationTime * 1000).toLocaleString()}
+                      Registration Time: {new Date(accountInfo.registration_time * 1000).toLocaleString()}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Last Redeemed Sequence: {accountInfo.lastRedeemedSequence}
+                      Last Redeemed Sequence: {accountInfo.last_redeemed_sequence}
                     </Typography>
                   </Grid>
                 </>
@@ -181,40 +194,34 @@ const Wallet: React.FC = () => {
       )}
 
       <Grid container spacing={3} mb={4}>
-        {balances && Object.entries(balances).map(([symbol, balance]: [string, any]) => {
-          const tokenKey = symbol as TokenSymbol;
-          const config = SUPPORTED_TOKENS[tokenKey];
+        {accountInfo.balances && Object.entries(accountInfo.balances).map(([token_symbol, balance]: [string, any]) => {
+          const config = Object.values(SUPPORTED_TOKENS).find(token => token.symbol === balance.token_symbol);
           return (
-            <Grid item xs={12} md={4} key={symbol}>
+            <Grid item xs={12} md={4} key={token_symbol}>
               <Card sx={{ background: 'rgba(26, 31, 46, 0.4)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
                 <CardContent>
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
                     <Box display="flex" alignItems="center" gap={1}>
-                      <img src={config.icon} alt={config.symbol} width={24} height={24} />
-                      <Typography variant="h6">{config.symbol}</Typography>
+                      <img src={config?.icon} alt={config?.symbol} width={24} height={24} />
+                      <Typography variant="h6">{config?.symbol}</Typography>
                     </Box>
                     <TrendingUp fontSize="small" color="primary" />
                   </Box>
                   <Box mb={2}>
-                    <Typography variant="body2" color="text.secondary">Wallet Balance</Typography>
-                    <Typography variant="h5" fontWeight={600}>{formatBalance(balance.wallet)}</Typography>
-                  </Box>
-                  <Box>
                     <Typography variant="body2" color="text.secondary">MeshPay Balance</Typography>
-                    <Typography variant="h6" color="primary.main">{formatBalance(balance.meshpay)}</Typography>
+                    <Typography variant="h5" fontWeight={600}>{formatBalance(balance.meshpay_balance.toString())}</Typography>
                   </Box>
-                  <Divider sx={{ my: 1 }} />
                   <Box>
-                    <Typography variant="body2" color="text.secondary">Total Balance</Typography>
-                    <Typography variant="body1" fontWeight={500}>{formatBalance(balance.total)}</Typography>
+                    <Typography variant="body2" color="text.secondary">Wallet Balance</Typography>
+                    <Typography variant="h6" color="primary.main">{formatBalance(balance.wallet_balance.toString())}</Typography>
                   </Box>
                 </CardContent>
               </Card>
             </Grid>
           );
         })}
-        {loading && !balances && <Grid item xs={12}><CircularProgress /></Grid>}
-        {!loading && !balances && error && <Grid item xs={12}><Alert severity="warning">Could not load balances.</Alert></Grid>}
+        {loading && !accountInfo.balances && <Grid item xs={12}><CircularProgress /></Grid>}
+        {!loading && !accountInfo.balances && error && <Grid item xs={12}><Alert severity="warning">Could not load balances.</Alert></Grid>}
       </Grid>
 
       <Box mb={4}>

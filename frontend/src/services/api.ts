@@ -1,27 +1,53 @@
-// Updated API service for the *flat-route* backend (no /api/v1 prefix)
-// Only essential endpoints are wired; unimplemented ones return safe defaults
-
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { cacheService } from './cacheService';
 
 // Types used in the UI – keep existing imports working
 import type {
   AuthorityInfo,
   NetworkMetrics,
   TransactionRecord,
-  WalletBalance,
+  WalletBalances,
   NetworkTopology,
   Certificate,
   PaymentFormData,
   ShardInfo,
+  AccountInfo,
 } from '../types/api';
 
 // ---------------------------------------------------------------------------
 // Axios client configuration
 // ---------------------------------------------------------------------------
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.142:8080';
+
+// Cache TTL configurations (in milliseconds)
+const CACHE_TTL = {
+  SHARDS: 30 * 60 * 1000,        // 30 minutes
+  AUTHORITIES: 30 * 1000,       // 30 seconds
+  NETWORK_METRICS: 60 * 1000,   // 1 minute
+  TRANSACTIONS: 5 * 60 * 1000,  // 5 minutes
+  WALLET_BALANCE: 30 * 60 * 1000, // 30 minutes
+  HEALTH: 10 * 1000,            // 10 seconds
+};
+
+// Fallback data for when API is unavailable
+const FALLBACK_DATA = {
+  shards: [] as ShardInfo[],
+  authorities: [] as AuthorityInfo[],
+  networkMetrics: {
+    total_transactions: 0,
+    successful_transactions: 0,
+    average_confirmation_time: 0,
+    online_authorities: 0,
+    total_authorities: 0,
+    network_latency: 0,
+  } as NetworkMetrics,
+  transactions: [] as TransactionRecord[],
+  walletAccount: { address: '', balances: { XTZ: { token_symbol: 'XTZ', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 }, WTZ: { token_symbol: 'WTZ', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 }, USDT: { token_symbol: 'USDT', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 }, USDC: { token_symbol: 'USDC', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 } }, is_registered: false, registration_time: 0, last_redeemed_sequence: 0 } as AccountInfo,
+};
 
 class ApiService {
   private client: AxiosInstance;
+  private isOnline: boolean = true;
 
   constructor() {
     this.client = axios.create({
@@ -38,85 +64,224 @@ class ApiService {
     });
 
     this.client.interceptors.response.use(
-      (res: AxiosResponse) => res,
+      (res: AxiosResponse) => {
+        this.isOnline = true;
+        return res;
+      },
       (err) => {
+        this.isOnline = false;
         if (err.response?.status === 401) localStorage.removeItem('auth_token');
         return Promise.reject(err);
       },
     );
   }
 
+  /**
+   * Generic method to fetch data with caching and fallback
+   */
+  private async fetchWithCache<T>(
+    endpoint: string,
+    cacheKey: string,
+    ttl: number,
+    fallbackData: T,
+    params?: Record<string, any>
+  ): Promise<T> {
+    try {
+      const cachedData = cacheService.get<T>(cacheKey, params);
+      if (cachedData !== null) {
+        return cachedData;
+      }
+      // Try to fetch fresh data from API
+      const { data } = await this.client.get<T>(endpoint);
+
+      // Cache the successful response
+      cacheService.set(cacheKey, data, ttl, params);
+ 
+      return data;
+    } catch (error) {
+      // Return fallback data if no cache available
+      return fallbackData;
+    }
+  }
+
+  /**
+   * Get shards with caching and fallback
+   */
   async getShards(): Promise<ShardInfo[]> {
-    const { data } = await this.client.get<ShardInfo[]>('/api/shards');
-    console.log('data', data);
-    return data;
+    return this.fetchWithCache<ShardInfo[]>(
+      '/shards',
+      'shards',
+      CACHE_TTL.SHARDS,
+      FALLBACK_DATA.shards
+    );
   }
 
+  /**
+   * Get authorities with caching and fallback
+   */
   async getAuthorities(): Promise<AuthorityInfo[]> {
-    const { data } = await this.client.get<AuthorityInfo[]>('/api/authorities');
-    return data;
+    return this.fetchWithCache<AuthorityInfo[]>(
+      '/authorities',
+      'authorities',
+      CACHE_TTL.AUTHORITIES,
+      FALLBACK_DATA.authorities
+    );
   }
 
+  /**
+   * Get specific authority with caching
+   */
   async getAuthority(name: string): Promise<AuthorityInfo> {
-    const { data } = await this.client.get<AuthorityInfo>(`/api/authorities/${name}`);
-    return data;
+    return this.fetchWithCache<AuthorityInfo>(
+      `/authorities/${name}`,
+      'authority',
+      CACHE_TTL.AUTHORITIES,
+      {} as AuthorityInfo,
+      { name }
+    );
   }
 
   /**
    * Send transfer through chosen authority.
-   * Backend signature: POST /transfer?authority=NAME
+   * Backend signature: POST /transfer
    */
-  async createTransfer(authority: string, payload: PaymentFormData): Promise<any> {
-    const { data } = await this.client.post('/api/transfer', payload, {
-      params: { authority },
-    });
-    return data;
+  async createTransfer(payload: PaymentFormData): Promise<any> {
+    try {
+      const { data } = await this.client.post('/transfer', payload);
+      
+      // Invalidate relevant caches after successful transfer
+      cacheService.remove('authorities');
+      cacheService.remove('networkMetrics');
+      
+      return data;
+    } catch (error) {
+      console.error('Transfer failed:', error);
+      throw error;
+    }
   }
 
+  /**
+   * Ping authority with caching
+   */
   async pingAuthority(name: string): Promise<any> {
-    const { data } = await this.client.post(`/api/ping/${name}`);
-    return data;
+    return this.fetchWithCache<any>(
+      `/ping/${name}`,
+      'ping',
+      CACHE_TTL.HEALTH,
+      { status: 'offline', latency: -1 },
+      { name }
+    );
   }
 
+  /**
+   * Get health status with caching
+   */
   async getHealth(): Promise<any> {
-    const { data } = await this.client.get('/api/health');
-    return data;
+    return this.fetchWithCache<any>(
+      '/health',
+      'health',
+      CACHE_TTL.HEALTH,
+      { status: 'offline', timestamp: new Date().toISOString() }
+    );
   }
 
   // -----------------------------------------------------------------------
-  // 💤 Legacy methods – return placeholders so UI doesn’t crash
+  // 💤 Legacy methods – return placeholders so UI doesn't crash
   // -----------------------------------------------------------------------
 
   async getNetworkTopology(): Promise<NetworkTopology> {
-    return { nodes: [], links: [] } as unknown as NetworkTopology;
+    return this.fetchWithCache<NetworkTopology>(
+      '/network/topology',
+      'networkTopology',
+      CACHE_TTL.NETWORK_METRICS,
+      { authorities: [], clients: [], connections: {}, last_updated: new Date().toISOString() } as NetworkTopology
+    );
   }
 
   async getNetworkMetrics(): Promise<NetworkMetrics> {
-    // Backend not implemented yet – return safe defaults
-    return {
-      total_transactions: 0,
-      successful_transactions: 0,
-      average_confirmation_time: 0,
-      online_authorities: 0,
-      total_authorities: 0,
-      network_latency: 0,
-    } as NetworkMetrics;
+    return this.fetchWithCache<NetworkMetrics>(
+      '/network/metrics',
+      'networkMetrics',
+      CACHE_TTL.NETWORK_METRICS,
+      FALLBACK_DATA.networkMetrics
+    );
   }
 
   async getTransactionHistory(): Promise<TransactionRecord[]> {
-    return [];
+    return this.fetchWithCache<TransactionRecord[]>(
+      '/transactions/history',
+      'transactionHistory',
+      CACHE_TTL.TRANSACTIONS,
+      FALLBACK_DATA.transactions
+    );
   }
 
   async getTransaction(transactionId: string): Promise<TransactionRecord> {
-    throw new Error('getTransaction not implemented in new backend');
+    return this.fetchWithCache<TransactionRecord>(
+      `/transactions/${transactionId}`,
+      'transaction',
+      CACHE_TTL.TRANSACTIONS,
+      {} as TransactionRecord,
+      { transactionId }
+    );
   }
 
   async getTransactionCertificate(transactionId: string): Promise<Certificate> {
-    throw new Error('getTransactionCertificate not implemented in new backend');
+    return this.fetchWithCache<Certificate>(
+      `/transactions/${transactionId}/certificate`,
+      'certificate',
+      CACHE_TTL.TRANSACTIONS,
+      {} as Certificate,
+      { transactionId }
+    );
   }
 
-  async getWalletBalance(): Promise<WalletBalance> {
-    return { balance: 0, token: 'USDT' } as unknown as WalletBalance;
+  async getWalletAccount(address: string): Promise<AccountInfo> {
+    return this.fetchWithCache<AccountInfo>(
+      `/accounts/${address}`,
+      'walletAccount',
+      CACHE_TTL.WALLET_BALANCE,
+      FALLBACK_DATA.walletAccount
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Cache management methods
+  // -----------------------------------------------------------------------
+
+  /**
+   * Clear all cached data
+   */
+  clearCache(): void {
+    cacheService.clearCache();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats() {
+    return cacheService.getStats();
+  }
+
+  /**
+   * Check if API is online
+   */
+  isApiOnline(): boolean {
+    return this.isOnline;
+  }
+
+  /**
+   * Force refresh specific data type
+   */
+  async refreshData(dataType: 'shards' | 'authorities' | 'networkMetrics' | 'transactions'): Promise<void> {
+    const cacheKeys = {
+      shards: 'shards',
+      authorities: 'authorities', 
+      networkMetrics: 'networkMetrics',
+      transactions: 'transactionHistory',
+    };
+    
+    cacheService.remove(cacheKeys[dataType]);
   }
 
   // -----------------------------------------------------------------------
@@ -128,7 +293,14 @@ class ApiService {
       const msg = err.response.data?.message || err.response.data?.detail || 'Error';
       return `Error ${err.response.status}: ${msg}`;
     }
-    if (err.request) return 'Network error: cannot reach backend';
+    if (err.request) {
+      // Check if we have cached data available
+      const cacheStats = this.getCacheStats();
+      if (cacheStats.totalEntries > 0) {
+        return 'Network error: using cached data';
+      }
+      return 'Network error: cannot reach backend';
+    }
     return `Error: ${err.message}`;
   }
 

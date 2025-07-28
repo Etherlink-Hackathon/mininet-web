@@ -44,11 +44,11 @@ const Dashboard: React.FC = () => {
   /* ------------------------------------------------------------------ */
   const { 
     isConnected, 
-    balances,
+    accountInfo,
     fetchData,
     address,
   } = useWalletContext();
-
+  
   // Refresh data when account changes
   useEffect(() => {
     if (isConnected && address) {
@@ -86,9 +86,9 @@ const Dashboard: React.FC = () => {
       // Update stats
       setStats(prev => ({
         ...prev,
-        onlineAuthorities: metricsData.online_authorities,
-        totalAuthorities: metricsData.total_authorities,
-        averageLatency: metricsData.network_latency,
+        onlineAuthorities: metricsData.online_authorities || 0,
+        totalAuthorities: metricsData.total_authorities || 0,
+        averageLatency: metricsData.network_latency || 0,
       }));
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -145,9 +145,9 @@ const Dashboard: React.FC = () => {
 
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
-      {isConnected && balances && (
+      {isConnected && accountInfo.balances && (
         <Grid container spacing={3} mb={4}>
-          {Object.entries(balances)
+          {Object.entries(accountInfo.balances)
             .filter(([, bal]: [string, any]) => parseFloat(bal.meshpay) > 0)
             .map(([symbol, balanceData]: [string, any]) => {
               const tokenKey = symbol as TokenSymbol;
@@ -239,7 +239,7 @@ const Dashboard: React.FC = () => {
             <CardContent sx={{ height: '100%', p: '16px !important' }}>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} px={2}>
                 <Typography variant="h3">
-                  Network Status Map
+                  Network Status
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Click on a shard to view details
@@ -257,39 +257,6 @@ const Dashboard: React.FC = () => {
 
         <Grid item xs={12} md={4}>
           <Grid container spacing={2}>
-            {/* Network Metrics */}
-            {networkMetrics && (
-              <Grid item xs={12}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h3" gutterBottom>
-                      Network Metrics
-                    </Typography>
-                    <Box display="flex" flexDirection="column" gap={1}>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2">Total Transactions</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {networkMetrics.total_transactions.toLocaleString()}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2">Successful</Typography>
-                        <Typography variant="body2" fontWeight="bold" color="success.main">
-                          {networkMetrics.successful_transactions.toLocaleString()}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2">Avg Confirmation</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {networkMetrics.average_confirmation_time.toFixed(1)}s
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            )}
-
             {/* Quick Actions */}
             <Grid item xs={12}>
               <Card>

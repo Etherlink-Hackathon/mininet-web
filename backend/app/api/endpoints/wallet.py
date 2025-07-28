@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from ...services.blockchain_client import blockchain_client, AccountInfo, TokenBalance, ContractStats
+from ...services.mesh_client import mesh_client
 
 router = APIRouter()
 
@@ -91,15 +92,15 @@ async def get_account_info(address: str) -> AccountInfoResponse:
 async def get_wallet_balances(address: str) -> WalletBalancesResponse:
     """
     Get all token balances for a wallet address.
-    
-    Args:
-        address: Ethereum address to query
+        
+        Args:
+            address: Ethereum address to query
         
     Returns:
         Complete balance information for all supported tokens
     """
     try:
-        balances = await blockchain_client.get_account_balances(address)
+        balances = await mesh_client.get_wallet_balances(address)
         
         balance_responses = [
             TokenBalanceResponse(
