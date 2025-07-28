@@ -42,7 +42,7 @@ const FALLBACK_DATA = {
     network_latency: 0,
   } as NetworkMetrics,
   transactions: [] as TransactionRecord[],
-  walletAccount: { address: '', balances: { XTZ: { token_symbol: 'XTZ', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 }, WTZ: { token_symbol: 'WTZ', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 }, USDT: { token_symbol: 'USDT', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 }, USDC: { token_symbol: 'USDC', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 } }, is_registered: false, registration_time: 0, last_redeemed_sequence: 0 } as AccountInfo,
+  walletAccount: { address: '', balances: { XTZ: { token_symbol: 'XTZ', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 }, WTZ: { token_symbol: 'WTZ', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 }, USDT: { token_symbol: 'USDT', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 }, USDC: { token_symbol: 'USDC', token_address: '0x0000000000000000000000000000000000000000', wallet_balance: 0, meshpay_balance: 0, total_balance: 0 } }, is_registered: false, registration_time: 0, last_redeemed_sequence: 0, sequence_number: 0 } as AccountInfo,
 };
 
 class ApiService {
