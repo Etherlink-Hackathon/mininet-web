@@ -226,7 +226,7 @@ export function useDepositToMeshPay() {
     hash,
   });
 
-  const deposit = async (tokenSymbol: Exclude<TokenSymbol, 'XTZ'>, amount: string) => {
+  const deposit = async (tokenSymbol: Exclude<TokenSymbol, 'XTZ'>, amount: bigint) => {
     const tokenConfig = SUPPORTED_TOKENS[tokenSymbol];
     
     if (tokenConfig.isNative) {
@@ -236,14 +236,20 @@ export function useDepositToMeshPay() {
     if (!contractAddresses?.meshpay) {
       throw new Error('Contract addresses not configured');
     }
-
+    console.log({
+      address: contractAddresses.meshpay,
+      abi: MESHPAY_CONTRACT.abi,
+      functionName: 'handleFundingTransaction',
+      args: [tokenConfig.address, amount],
+      gas: overrideGas.deposit(amount.toString()),
+    })
     try {
       await writeContract({
         address: contractAddresses.meshpay,
         abi: MESHPAY_CONTRACT.abi,
         functionName: 'handleFundingTransaction',
         args: [tokenConfig.address, amount],
-        gas: overrideGas.deposit(amount),
+        gas: overrideGas.deposit(amount.toString()),
       });
     } catch (err) {
       console.error('Failed to deposit to MeshPay:', err);
@@ -332,7 +338,7 @@ export function useDepositFlow() {
   } = useDepositNativeToMeshPay();
 
   // Auto-deposit after approval success
-  const [pendingDeposit, setPendingDeposit] = useState<{token: TokenSymbol, amount: string} | null>(null);
+  const [pendingDeposit, setPendingDeposit] = useState<{token: TokenSymbol, amount: bigint} | null>(null);
   const [currentToken, setCurrentToken] = useState<TokenSymbol>('XTZ');
 
   useEffect(() => {
@@ -367,11 +373,11 @@ export function useDepositFlow() {
 
     if (currentAllowance < parsedAmount) {
       // Set pending deposit for after approval
-      setPendingDeposit({ token: tokenSymbol, amount });
+      setPendingDeposit({ token: tokenSymbol, amount: parsedAmount });
       await approveToken(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
     } else {
       // Direct deposit
-      await deposit(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, amount);
+      await deposit(tokenSymbol as Exclude<TokenSymbol, 'XTZ'>, parsedAmount);
     }
   };
     

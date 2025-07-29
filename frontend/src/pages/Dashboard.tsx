@@ -78,7 +78,8 @@ const Dashboard: React.FC = () => {
         apiService.getAuthorities(),
         apiService.getNetworkMetrics(),
       ]);
-
+      console.log(authoritiesData);
+      console.log(shardsData);
       setAuthorities(authoritiesData);
       setShards(shardsData);
       setNetworkMetrics(metricsData);
@@ -119,113 +120,188 @@ const Dashboard: React.FC = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-        <Typography variant="h1" sx={{ 
-          background: 'linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%)',
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}>
-          MeshPay
-        </Typography>
-        <Box display="flex" gap={2}>
-          <IconButton onClick={loadDashboardData} disabled={loading}>
-            <Refresh />
-          </IconButton>
-          <Button
-            variant="contained"
-            startIcon={<Send />}
-            onClick={() => setPaymentModalOpen(true)}
-          >
-            Quick Payment
-          </Button>
-        </Box>
-      </Box>
-
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
-      {isConnected && accountInfo.balances && (
-        <Grid container spacing={3} mb={4}>
-          {Object.entries(accountInfo.balances)
-            .filter(([, bal]: [string, any]) => parseFloat(bal.meshpay) > 0)
-            .map(([symbol, balanceData]: [string, any]) => {
-              const tokenKey = symbol as TokenSymbol;
-              const tokenCfg = SUPPORTED_TOKENS[tokenKey];
-              return (
-                <Grid item xs={12} sm={6} md={3} key={symbol}>
-                  <Card sx={{ background: 'rgba(26, 31, 46, 0.4)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                    <CardContent>
-                      <Box display="flex" alignItems="center" gap={2}>
-                        <img src={tokenCfg.icon} alt={tokenCfg.symbol} width={32} height={32} />
-                        <Box>
-                          <Typography variant="h5" color="primary.main" fontWeight={600}>
-                            {formatBalance(balanceData.meshpay)}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {tokenCfg.symbol} MeshPay
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              );
-            })}
-        </Grid>
-      )}
-
-      {/* Stats Cards (network-level metrics) */}
+      {/* All Dashboard Cards in Single Row */}
       <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <NetworkCheck color={getNetworkStatusColor()} sx={{ fontSize: 40 }} />
-                <Box>
-                  <Typography variant="h4">
-                    {stats.onlineAuthorities}/{stats.totalAuthorities}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Online Authorities
-                  </Typography>
+        {/* MeshPay Balance Card */}
+        {isConnected && accountInfo.balances && (
+          <Grid item xs={12} md={6}>
+            <Card sx={{ 
+              background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(108, 92, 231, 0.1) 100%)',
+              backdropFilter: 'blur(20px)', 
+              border: '1px solid rgba(0, 210, 255, 0.2)',
+              position: 'relative',
+              overflow: 'hidden',
+              height: '100%'
+            }}>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '4px',
+                  background: 'linear-gradient(90deg, #00D2FF 0%, #6C5CE7 100%)',
+                }}
+              />
+              <CardContent sx={{ p: 3 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                  <Box display="flex" alignItems="center" gap={2}>
+                    <AccountBalanceWallet sx={{ fontSize: 32, color: '#00D2FF' }} />
+                    <Box>
+                      <Typography variant="h5" fontWeight={600} sx={{ 
+                        background: 'linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%)',
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}>
+                        MeshPay Balance
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Available for offline payments
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Chip 
+                      label={accountInfo.is_registered ? "Registered" : "Not Registered"} 
+                      color={accountInfo.is_registered ? "success" : "warning"}
+                      variant="outlined"
+                    />
+                    <IconButton 
+                      onClick={loadDashboardData} 
+                      disabled={loading}
+                      size="small"
+                      sx={{ 
+                        color: '#00D2FF',
+                        '&:hover': { backgroundColor: 'rgba(0, 210, 255, 0.1)' }
+                      }}
+                    >
+                      <Refresh />
+                    </IconButton>
+                  </Box>
                 </Box>
+
+                <Grid container spacing={2}>
+                  {Object.entries(accountInfo.balances).map(([symbol, balanceData]: [string, any]) => {
+                    const tokenCfg = SUPPORTED_TOKENS[balanceData.token_symbol as TokenSymbol];
+                    const meshpayBalance = parseFloat(balanceData.meshpay_balance || 0);
+                    const walletBalance = parseFloat(balanceData.wallet_balance || 0);
+                    
+                    if (meshpayBalance > 0 || walletBalance > 0) {
+                      return (
+                        <Grid item xs={6} key={symbol}>
+                          <Box sx={{ 
+                            p: 2, 
+                            borderRadius: 2, 
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)'
+                          }}>
+                            <Box display="flex" alignItems="center" gap={2} mb={1}>
+                              <img src={tokenCfg.icon} alt={tokenCfg.symbol} width={24} height={24} />
+                              <Typography variant="h6" fontWeight={600}>
+                                {tokenCfg.symbol}
+                              </Typography>
+                            </Box>
+                            
+                            <Box display="flex" justifyContent="space-between" mb={1}>
+                              <Typography variant="body2" color="text.secondary">
+                                MeshPay:
+                              </Typography>
+                              <Typography variant="body2" fontWeight={600} color="#00D2FF">
+                                {formatBalance(meshpayBalance)}
+                              </Typography>
+                            </Box>
+                            
+                            <Box display="flex" justifyContent="space-between">
+                              <Typography variant="body2" color="text.secondary">
+                                Wallet:
+                              </Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {formatBalance(walletBalance)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+                    return null;
+                  })}
+                </Grid>
+
+                {Object.values(accountInfo.balances).every((balance: any) => 
+                  parseFloat(balance.meshpay_balance || 0) === 0 && 
+                  parseFloat(balance.wallet_balance || 0) === 0
+                ) && (
+                  <Box textAlign="center" py={3}>
+                    <Typography variant="body1" color="text.secondary" mb={2}>
+                      No balances available
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      startIcon={<Add />}
+                      onClick={() => setDepositModalOpen(true)}
+                      sx={{ 
+                        background: 'linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #00B8E6 0%, #5B4BD6 100%)',
+                        }
+                      }}
+                    >
+                      Deposit to Get Started
+                    </Button>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Network Stats Cards */}
+        <Grid item xs={12} sm={4} md={2}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+                <NetworkCheck color={getNetworkStatusColor()} sx={{ fontSize: 40, mb: 1 }} />
+                <Typography variant="h4" fontWeight={600}>
+                  {stats.onlineAuthorities}/{stats.totalAuthorities}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Online Authorities
+                </Typography>
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
+        <Grid item xs={12} sm={4} md={2}>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <Speed color="info" sx={{ fontSize: 40 }} />
-                <Box>
-                  <Typography variant="h4">
-                    {stats.averageLatency.toFixed(0)}ms
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Average Latency
-                  </Typography>
-                </Box>
+              <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+                <Speed color="info" sx={{ fontSize: 40, mb: 1 }} />
+                <Typography variant="h4" fontWeight={600}>
+                  {stats.averageLatency.toFixed(0)}ms
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Average Latency
+                </Typography>
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
+        <Grid item xs={12} sm={4} md={2}>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
-              <Box display="flex" alignItems="center" gap={2}>
-                <TrendingUp color="success" sx={{ fontSize: 40 }} />
-                <Box>
-                  <Typography variant="h4">
-                    {stats.successRate}%
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Success Rate
-                  </Typography>
-                </Box>
+              <Box display="flex" flexDirection="column" alignItems="center" textAlign="center">
+                <TrendingUp color="success" sx={{ fontSize: 40, mb: 1 }} />
+                <Typography variant="h4" fontWeight={600}>
+                  {stats.successRate}%
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Success Rate
+                </Typography>
               </Box>
             </CardContent>
           </Card>

@@ -44,7 +44,6 @@ contract MeshPayMVP is ReentrancyGuard {
         address token;
         uint256 amount;
         uint256 sequenceNumber;
-        uint256 timestamp;
     }
 
     /// @dev Redeem transaction from MeshPay to Primary
@@ -213,48 +212,6 @@ contract MeshPayMVP is ReentrancyGuard {
     }
 
     /**
-     * @dev Create a transfer certificate for off-chain payments
-     * @param recipient The recipient address
-     * @param token The token address (use NATIVE_TOKEN for XTZ)
-     * @param amount The transfer amount
-     * @param sequenceNumber The sequence number for replay protection
-     * @return bytes32 The certificate hash
-     */
-    function createTransferCertificate(
-        address recipient,
-        address token,
-        uint256 amount,
-        uint256 sequenceNumber
-    ) 
-        external 
-        onlyRegisteredAccount
-        validAddress(recipient)
-        validAmount(amount)
-        returns (bytes32)
-    {
-        // Note: token can be NATIVE_TOKEN (address(0)) for XTZ
-        // Check sender has sufficient balance
-        if (accounts[msg.sender].balances[token] < amount) revert InsufficientBalance();
-        
-        // Create transfer certificate
-        TransferCertificate memory cert = TransferCertificate({
-            sender: msg.sender,
-            recipient: recipient,
-            token: token,
-            amount: amount,
-            sequenceNumber: sequenceNumber,
-            timestamp: block.timestamp
-        });
-        
-        // Generate certificate hash
-        bytes32 certHash = keccak256(abi.encode(cert));
-        
-        emit TransferCertificateCreated(msg.sender, recipient, certHash);
-        
-        return certHash;
-    }
-
-    /**
      * @dev Handle redeem transaction from MeshPay to Primary
      * @param redeemTx The redeem transaction data
      */
@@ -269,11 +226,6 @@ contract MeshPayMVP is ReentrancyGuard {
 
         // Check if already processed
         if (processedRedemptions[certHash]) revert CertificateAlreadyRedeemed();
-
-        // Check certificate expiry: must be within 24 hours (86,400 seconds)
-        if (block.timestamp > cert.timestamp + 24 hours) {
-            revert("CertificateExpired");
-        }
 
         // Validate sequence number AFTER ensuring not previously redeemed
         if (cert.sequenceNumber <= accounts[cert.sender].lastRedeemedSequence) {

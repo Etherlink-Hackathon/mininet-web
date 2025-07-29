@@ -149,10 +149,11 @@ export interface WebSocketMessage {
 
 // Form types
 export interface PaymentFormData {
+  sender: string;
   recipient: string;
-  amount: number;
-  token: 'USDT' | 'USDC';
-  selectedAuthorities?: string[];
+  amount: bigint;
+  token_address: string;
+  sequence_number: number;
 }
 
 export interface AuthoritySelectionData {

@@ -776,7 +776,7 @@ const Authority: React.FC = () => {
             </Select>
           </FormControl>
 
-          <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1 }}>
+          <Box sx={{ bgcolor: '#1A1F2E', p: 2, borderRadius: 1 }}>
             <Typography variant="subtitle2" gutterBottom>Expected Rewards:</Typography>
             <Typography variant="body2" color="text.secondary">
               • Base APY: 8-12% depending on network activity
@@ -799,7 +799,7 @@ const Authority: React.FC = () => {
             disabled={isLocking || parseFloat(lockAmount) < 100}
             startIcon={isLocking ? <CircularProgress size={16} /> : <Lock />}
           >
-            {isLocking ? 'Locking...' : `Lock ${lockAmount} XTZ`}
+            {isLocking ? 'Locking...' : `Lock`}
           </Button>
         </DialogActions>
       </Dialog>

@@ -17,6 +17,9 @@ import {
 } from '@mui/material';
 import { Send } from '@mui/icons-material';
 import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
+import { apiService } from '../services/api';
+import { useWalletContext } from '../context/WalletContext';
+import { parseUnits } from 'viem';
 
 interface QuickPaymentModalProps {
   open: boolean;
@@ -37,6 +40,8 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const { accountInfo } = useWalletContext();
+
   const handleSubmit = async () => {
     if (!amount || !recipient || !selectedCluster) {
       setError('Please fill in all fields');
@@ -48,16 +53,23 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
 
     try {
       // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        onClose();
+      const data = await apiService.transfer({
+        sender: accountInfo.address,
+        recipient: recipient,
+        amount: parseUnits(amount, SUPPORTED_TOKENS[token].decimals),
+        sequence_number: accountInfo.sequence_number,
+        token_address: SUPPORTED_TOKENS[token].address,
+      });
+      console.log(data);
+      if(data.success) {
+        setSuccess(true);
         // Reset form
         setAmount('');
         setRecipient('');
         setSelectedCluster('');
-      }, 2000);
+      } else {
+        setError(data.error);
+      }
     } catch (err) {
       setError('Payment failed. Please try again.');
     } finally {

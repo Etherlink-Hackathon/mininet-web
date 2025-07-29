@@ -44,45 +44,6 @@ describe("MeshPayMVP", function () {
     // await network.provider.send("hardhat_setBalance", [account1.address, INITIAL_ETH.toString()]);
   });
 
-  describe("Account Registration", function () {
-    it("should allow account registration", async function () {
-      // Registration happens automatically during funding, so test with funding
-      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
-      await expect(fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100")))
-        .to.emit(fastPay, "AccountRegistered")
-        .withArgs(account1.address, anyValue);
-
-      expect(await fastPay.isAccountRegistered(account1.address)).to.be.true;
-      const accounts = await fastPay.getRegisteredAccounts();
-      expect(accounts.length).to.equal(1);
-      expect(accounts[0]).to.equal(account1.address);
-    });
-
-    it("should prevent double registration", async function () {
-      // First registration via funding
-      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
-      await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
-      
-      // Second funding should succeed but not emit AccountRegistered again
-      await expect(fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("50")))
-        .to.emit(fastPay, "FundingCompleted")
-        .withArgs(account1.address, await token.getAddress(), ethers.parseEther("50"), anyValue);
-     
-      // Should still be registered
-      expect(await fastPay.isAccountRegistered(account1.address)).to.be.true;
-    });
-
-    it("should track registration time", async function () {
-      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
-      const tx = await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
-      const receipt = await tx.wait();
-      const timestamp = await time.latest();
-
-      const accountInfo = await fastPay.getAccountInfo(account1.address);
-      expect(accountInfo.registrationTime).to.be.closeTo(timestamp, 5);
-    });
-  });
-
   describe("Funding Transactions", function () {
     beforeEach(async function () {
       // Registration happens automatically during funding
@@ -166,70 +127,6 @@ describe("MeshPayMVP", function () {
     });
   });
 
-  describe("Transfer Certificates", function () {
-    beforeEach(async function () {
-      // Registration happens automatically during funding
-      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
-      await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("500"));
-    });
-
-    it("should create transfer certificates", async function () {
-      const transferAmount = ethers.parseEther("100");
-      const sequenceNumber = 1;
-
-      await expect(fastPay.connect(account1).createTransferCertificate(
-        account2.address,
-        await token.getAddress(),
-        transferAmount,
-        sequenceNumber
-      ))
-        .to.emit(fastPay, "TransferCertificateCreated")
-        .withArgs(account1.address, account2.address, anyValue);
-    });
-
-    it("should prevent insufficient balance", async function () {
-      const transferAmount = ethers.parseEther("1000"); // More than available
-      const sequenceNumber = 1;
-
-      await expect(fastPay.connect(account1).createTransferCertificate(
-        account2.address,
-        await token.getAddress(),
-        transferAmount,
-        sequenceNumber
-      )).to.be.revertedWithCustomError(fastPay, "InsufficientBalance");
-    });
-
-    it("should create native XTZ transfer certificates", async function () {
-      const fundAmount = ethers.parseEther("500");
-      const transferAmount = ethers.parseEther("100");
-      const sequenceNumber = 1;
-      const nativeToken = await fastPay.NATIVE_TOKEN();
-
-      // Fund with native XTZ first
-      await fastPay.connect(account1).handleNativeFundingTransaction({ value: fundAmount });
-
-      await expect(fastPay.connect(account1).createTransferCertificate(
-        account2.address,
-        nativeToken,
-        transferAmount,
-        sequenceNumber
-      ))
-        .to.emit(fastPay, "TransferCertificateCreated")
-        .withArgs(account1.address, account2.address, anyValue);
-    });
-
-    it("should prevent self-transfers", async function () {
-      const transferAmount = ethers.parseEther("100");
-      const sequenceNumber = 1;
-
-      await expect(fastPay.connect(account1).createTransferCertificate(
-        account1.address,
-        await token.getAddress(),
-        transferAmount,
-        sequenceNumber
-      ));
-    });
-  });
 
   describe("Redemption Transactions", function () {
     beforeEach(async function () {
@@ -242,14 +139,6 @@ describe("MeshPayMVP", function () {
       const transferAmount = ethers.parseEther("100");
       const sequenceNumber = 1;
 
-      // Create certificate
-      await fastPay.connect(account1).createTransferCertificate(
-        account2.address,
-        await token.getAddress(),
-        transferAmount,
-        sequenceNumber
-      );
-
       // Create redemption transaction
       const redeemTx = {
         transferCertificate: {
@@ -258,7 +147,6 @@ describe("MeshPayMVP", function () {
           token: await token.getAddress(),
           amount: transferAmount,
           sequenceNumber: sequenceNumber,
-          timestamp: await time.latest(),
         },
         signature: "0x", // Empty signature for MVP
       };
@@ -288,13 +176,7 @@ describe("MeshPayMVP", function () {
       // Fund with native XTZ first
       await fastPay.connect(account1).handleNativeFundingTransaction({ value: fundAmount });
 
-      // Create certificate
-      await fastPay.connect(account1).createTransferCertificate(
-        account2.address,
-        nativeToken,
-        transferAmount,
-        sequenceNumber
-      );
+
 
       const initialBalance = await ethers.provider.getBalance(account2.address);
 
@@ -306,7 +188,6 @@ describe("MeshPayMVP", function () {
           token: nativeToken,
           amount: transferAmount,
           sequenceNumber: sequenceNumber,
-          timestamp: await time.latest(),
         },
         signature: "0x",
       };
@@ -333,13 +214,7 @@ describe("MeshPayMVP", function () {
       const transferAmount = ethers.parseEther("100");
       const sequenceNumber = 1;
 
-      // Create certificate
-      await fastPay.connect(account1).createTransferCertificate(
-        account2.address,
-        await token.getAddress(),
-        transferAmount,
-        sequenceNumber
-      );
+
 
       const redeemTx = {
         transferCertificate: {
@@ -348,7 +223,6 @@ describe("MeshPayMVP", function () {
           token: await token.getAddress(),
           amount: transferAmount,
           sequenceNumber: sequenceNumber,
-          timestamp: await time.latest(),
         },
         signature: "0x",
       };
@@ -361,37 +235,6 @@ describe("MeshPayMVP", function () {
         .to.be.revertedWithCustomError(fastPay, "CertificateAlreadyRedeemed");
     });
 
-    it("should prevent expired certificates", async function () {
-      const transferAmount = ethers.parseEther("100");
-      const sequenceNumber = 1;
-
-      // Create certificate
-      await fastPay.connect(account1).createTransferCertificate(
-        account2.address,
-        await token.getAddress(),
-        transferAmount,
-        sequenceNumber
-      );
-
-      // Fast forward time by more than 24 hours
-      await time.increase(25 * 60 * 60); // 25 hours
-
-      const redeemTx = {
-        transferCertificate: {
-          sender: account1.address,
-          recipient: account2.address,
-          token: await token.getAddress(),
-          amount: transferAmount,
-          sequenceNumber: sequenceNumber,
-          timestamp: (await time.latest()) - (25 * 60 * 60), // Old timestamp
-        },
-        signature: "0x",
-      };
-
-      // Skipped - expiry logic not implemented in contract
-      await expect(fastPay.connect(account2).handleRedeemTransaction(redeemTx))
-        .to.be.reverted;
-    });
   });
 
   describe("Balance Management", function () {
@@ -428,19 +271,6 @@ describe("MeshPayMVP", function () {
   });
 
   describe("Access Control", function () {
-    it("should allow only registered accounts to create certificates", async function () {
-      // Register account1 via funding
-      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
-      await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("100"));
-      
-      await expect(fastPay.connect(account2).createTransferCertificate(
-        account1.address,
-        await token.getAddress(),
-        ethers.parseEther("100"),
-        1
-      )).to.be.revertedWithCustomError(fastPay, "AccountNotRegistered");
-    });
-
     it("should allow anyone to register accounts", async function () {
       // Test registration via funding
       await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);

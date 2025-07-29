@@ -2,131 +2,41 @@ import React, { useState, useEffect } from 'react';
 import { Container, Typography, Box, Grid, Card, CardContent, Chip } from '@mui/material';
 import { LocationOn, People, Security, Speed } from '@mui/icons-material';
 import NetworkMap from '../components/NetworkMap';
-import { AuthorityInfo } from '../types/api';
-
-// Mock data for demonstration
-const mockAuthorities: AuthorityInfo[] = [
-  {
-    name: 'Authority-NYC',
-    address: {
-      node_id: 'auth-nyc-001',
-      ip_address: '192.168.1.10',
-      port: 8080,
-      node_type: 'authority'
-    },
-    position: { x: 40.7128, y: -74.0060, z: 0 }, // New York
-    status: 'online',
-    shards: [
-      { shard_id: 'shard-001', account_count: 1250, total_transactions: 8934, total_stake: 1000000, last_sync: '2024-01-15T10:30:00Z', authorities: [] },
-      { shard_id: 'shard-002', account_count: 980, total_transactions: 5672, total_stake: 1000000, last_sync: '2024-01-15T10:29:45Z', authorities: [] }
-    ],
-    committee_members: ['member-001', 'member-002', 'member-003'],
-    last_heartbeat: '2024-01-15T10:30:15Z',
-    performance_metrics: { latency: 45, throughput: 1200 },
-    stake: 500000,
-    network_info: { host: 'nyc.authority.network', port: 443 }
-  },
-  {
-    name: 'Authority-LON',
-    address: {
-      node_id: 'auth-lon-001',
-      ip_address: '192.168.1.11',
-      port: 8080,
-      node_type: 'authority'
-    },
-    position: { x: 51.5074, y: -0.1278, z: 0 }, // London
-    status: 'online',
-    shards: [
-      { shard_id: 'shard-003', account_count: 1100, total_transactions: 7234, total_stake: 1000000, last_sync: '2024-01-15T10:29:50Z', authorities: [] }
-    ],
-    committee_members: ['member-004', 'member-005'],
-    last_heartbeat: '2024-01-15T10:30:10Z',
-    performance_metrics: { latency: 32, throughput: 1400 },
-    stake: 750000,
-    network_info: { host: 'lon.authority.network', port: 443 }
-  },
-  {
-    name: 'Authority-TKY',
-    address: {
-      node_id: 'auth-tky-001',
-      ip_address: '192.168.1.12',
-      port: 8080,
-      node_type: 'authority'
-    },
-    position: { x: 35.6762, y: 139.6503, z: 0 }, // Tokyo
-    status: 'syncing',
-    shards: [
-      { shard_id: 'shard-004', account_count: 890, total_transactions: 4521, total_stake: 1000000, last_sync: '2024-01-15T10:28:30Z', authorities: [] },
-      { shard_id: 'shard-005', account_count: 1340, total_transactions: 9876, total_stake: 1000000, last_sync: '2024-01-15T10:28:45Z', authorities: [] }
-    ],
-    committee_members: ['member-006', 'member-007', 'member-008', 'member-009'],
-    last_heartbeat: '2024-01-15T10:29:45Z',
-    performance_metrics: { latency: 78, throughput: 950 },
-    stake: 420000,
-    network_info: { host: 'tky.authority.network', port: 443 }
-  },
-  {
-    name: 'Authority-SF',
-    address: {
-      node_id: 'auth-sf-001',
-      ip_address: '192.168.1.13',
-      port: 8080,
-      node_type: 'authority'
-    },
-    position: { x: 37.7749, y: -122.4194, z: 0 }, // San Francisco
-    status: 'online',
-    shards: [
-      { shard_id: 'shard-006', account_count: 1560, total_transactions: 12340, total_stake: 1000000, last_sync: '2024-01-15T10:30:05Z', authorities: [] }
-    ],
-    committee_members: ['member-010', 'member-011'],
-    last_heartbeat: '2024-01-15T10:30:12Z',
-    performance_metrics: { latency: 28, throughput: 1650 },
-    stake: 820000,
-    network_info: { host: 'sf.authority.network', port: 443 }
-  },
-  {
-    name: 'Authority-BER',
-    address: {
-      node_id: 'auth-ber-001',
-      ip_address: '192.168.1.14',
-      port: 8080,
-      node_type: 'authority'
-    },
-    position: { x: 52.5200, y: 13.4050, z: 0 }, // Berlin
-    status: 'offline',
-    shards: [
-      { shard_id: 'shard-007', account_count: 720, total_transactions: 3456, total_stake: 1000000, last_sync: '2024-01-15T10:25:20Z', authorities: [] }
-    ],
-    committee_members: ['member-012'],
-    last_heartbeat: '2024-01-15T10:25:30Z',
-    performance_metrics: { latency: 0, throughput: 0 },
-    stake: 300000,
-    network_info: { host: 'ber.authority.network', port: 443 }
-  }
-];
+import { AuthorityInfo, NetworkMetrics, ShardInfo } from '../types/api';
+import { apiService } from '../services/api';
 
 const NetworkMapPage: React.FC = () => {
-  const [authorities, setAuthorities] = useState<AuthorityInfo[]>(mockAuthorities);
+  const [authorities, setAuthorities] = useState<AuthorityInfo[]>([]);
+  const [shards, setShards] = useState<ShardInfo[]>([]);
+  const [networkMetrics, setNetworkMetrics] = useState<NetworkMetrics | null>(null);
   const [selectedAuthority, setSelectedAuthority] = useState<AuthorityInfo | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Simulate real-time updates
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [shards, authorities, metrics] = await Promise.all([
+        apiService.getShards(),
+        apiService.getAuthorities(),
+        apiService.getNetworkMetrics(),
+      ]);
+      setAuthorities(authorities);
+      setShards(shards);
+      setNetworkMetrics(metrics);
+    } catch (error) {
+      console.error('Error loading network map data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAuthorities(prevAuthorities => 
-        prevAuthorities.map(auth => ({
-          ...auth,
-          last_heartbeat: new Date().toISOString(),
-          performance_metrics: {
-            ...auth.performance_metrics,
-            latency: auth.status === 'online' ? Math.floor(Math.random() * 100) + 20 : 0,
-            throughput: auth.status === 'online' ? Math.floor(Math.random() * 1000) + 500 : 0
-          }
-        }))
-      );
-    }, 5000); // Update every 5 seconds
-
+    loadData();
+    // Refresh every 30 seconds
+    const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
   }, []);
+
 
   const handleAuthorityClick = (authority: AuthorityInfo) => {
     setSelectedAuthority(authority);
@@ -141,14 +51,14 @@ const NetworkMapPage: React.FC = () => {
   };
 
   const getTotalStats = () => {
-    const totalShards = authorities.reduce((sum, auth) => sum + auth.shards.length, 0);
-    const totalAccounts = authorities.reduce((sum, auth) => 
-      sum + auth.shards.reduce((shardSum, shard) => shardSum + shard.account_count, 0), 0
+    const totalShards = shards.length;
+    const totalAccounts = shards.reduce((sum, shard) => 
+      sum + shard.account_count, 0
     );
-    const totalTransactions = authorities.reduce((sum, auth) => 
-      sum + auth.shards.reduce((shardSum, shard) => shardSum + shard.total_transactions, 0), 0
+    const totalTransactions = shards.reduce((sum, shard) => 
+      sum + shard.total_transactions, 0
     );
-    const totalStake = authorities.reduce((sum, auth) => sum + auth.stake, 0);
+    const totalStake = shards.reduce((sum, shard) => sum + shard.total_stake, 0);
     
     return { totalShards, totalAccounts, totalTransactions, totalStake };
   };

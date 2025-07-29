@@ -34,7 +34,7 @@ export const SUPPORTED_TOKENS = {
     icon: '/xtz.svg',
   },
   WTZ: {
-    address: (import.meta.env.VITE_WTZ_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
+    address: import.meta.env.VITE_WTZ_CONTRACT_ADDRESS as Address,
     decimals: 18,
     symbol: 'WTZ',
     name: 'Wrapped Tezos',
@@ -42,7 +42,7 @@ export const SUPPORTED_TOKENS = {
     icon: '/xtz.svg',
   },
   USDT: {
-    address: (import.meta.env.VITE_USDT_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
+    address: import.meta.env.VITE_USDT_CONTRACT_ADDRESS as Address,
     decimals: 6,
     symbol: 'USDT',
     name: 'Tether USD',
@@ -50,7 +50,7 @@ export const SUPPORTED_TOKENS = {
     icon: '/usdt.svg',
   },
   USDC: {
-    address: (import.meta.env.VITE_USDC_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as Address,
+    address: import.meta.env.VITE_USDC_CONTRACT_ADDRESS as Address,
     decimals: 6,
     symbol: 'USDC',
     name: 'USD Coin',

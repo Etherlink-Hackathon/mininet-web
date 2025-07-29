@@ -17,7 +17,7 @@ import type {
 // ---------------------------------------------------------------------------
 // Axios client configuration
 // ---------------------------------------------------------------------------
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.142:8080';
+const API_BASE_URL = '/api';
 
 // Cache TTL configurations (in milliseconds)
 const CACHE_TTL = {
@@ -87,10 +87,6 @@ class ApiService {
     params?: Record<string, any>
   ): Promise<T> {
     try {
-      const cachedData = cacheService.get<T>(cacheKey, params);
-      if (cachedData !== null) {
-        return cachedData;
-      }
       // Try to fetch fresh data from API
       const { data } = await this.client.get<T>(endpoint);
 
@@ -99,6 +95,10 @@ class ApiService {
  
       return data;
     } catch (error) {
+      const cachedData = cacheService.get<T>(cacheKey, params);
+      if (cachedData !== null) {
+        return cachedData;
+      }
       // Return fallback data if no cache available
       return fallbackData;
     }
@@ -145,13 +145,11 @@ class ApiService {
    * Send transfer through chosen authority.
    * Backend signature: POST /transfer
    */
-  async createTransfer(payload: PaymentFormData): Promise<any> {
+  async transfer(payload: PaymentFormData): Promise<any> {
     try {
       const { data } = await this.client.post('/transfer', payload);
       
-      // Invalidate relevant caches after successful transfer
-      cacheService.remove('authorities');
-      cacheService.remove('networkMetrics');
+      // TODO: Update relevant caches after successful transfer
       
       return data;
     } catch (error) {
@@ -306,7 +304,7 @@ class ApiService {
 
   // WebSocket helper – not available yet; placeholder to avoid breaking imports
   createWebSocketConnection(): WebSocket {
-    const url = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/updates';
+    const url = import.meta.env.VITE_WS_URL || 'ws://192.168.1.142:8080/ws/updates';
     return new WebSocket(url);
   }
 }
