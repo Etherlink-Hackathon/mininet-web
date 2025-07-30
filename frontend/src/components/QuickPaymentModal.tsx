@@ -17,8 +17,10 @@ import {
   LinearProgress,
   Chip,
   Paper,
+  Tooltip,
+  IconButton,
 } from '@mui/material';
-import { Send, CheckCircle, Security, Radio } from '@mui/icons-material';
+import { Send, CheckCircle, Security, Radio, Info } from '@mui/icons-material';
 import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
 import { apiService } from '../services/api';
 import { useWalletContext } from '../context/WalletContext';
@@ -30,6 +32,64 @@ interface QuickPaymentModalProps {
   onClose: () => void;
   shards: any[]; // You can type this properly based on your shard structure
 }
+
+// Informational tooltip component explaining the process
+const ProcessInfoTooltip: React.FC = () => {
+  return (
+    <Tooltip
+      title={
+        <Box sx={{ p: 1, maxWidth: 300 }}>
+          <Typography variant="subtitle2" sx={{ color: 'white', mb: 1, fontWeight: 600 }}>
+            🔐 MeshPay Transaction Process
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+              <strong>Step 1:</strong> Authorities verify your transaction locally
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+              <strong>Step 2:</strong> Collect certificates from 2/3 of authorities
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+              <strong>Step 3:</strong> Broadcast confirmation to finalize
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1, display: 'block' }}>
+              💡 This ensures offline payments work without internet!
+            </Typography>
+          </Box>
+        </Box>
+      }
+      arrow
+      placement="top"
+      PopperProps={{
+        sx: {
+          '& .MuiTooltip-tooltip': {
+            backgroundColor: 'rgba(26, 31, 46, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 2,
+            fontSize: '0.875rem',
+            maxWidth: 350,
+          },
+          '& .MuiTooltip-arrow': {
+            color: 'rgba(26, 31, 46, 0.95)',
+          },
+        },
+      }}
+    >
+      <IconButton
+        size="small"
+        sx={{
+          color: 'rgba(255, 255, 255, 0.7)',
+          '&:hover': {
+            color: 'rgba(0, 210, 255, 0.8)',
+          },
+        }}
+      >
+        <Info fontSize="small" />
+      </IconButton>
+    </Tooltip>
+  );
+};
 
 // Separate Transfer Progress Modal Component
 const TransferProgressModal: React.FC<{
@@ -340,10 +400,31 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
         <Box display="flex" alignItems="center" gap={2}>
           <Send color="primary" />
           <Typography variant="h6">Quick Payment</Typography>
+          <ProcessInfoTooltip />
         </Box>
       </DialogTitle>
 
       <DialogContent sx={{ pt: 2 }}>
+        {/* Process Information Alert */}
+        <Alert 
+          severity="info" 
+          sx={{ 
+            mb: 2,
+            background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(108, 92, 231, 0.1) 100%)',
+            border: '1px solid rgba(0, 210, 255, 0.3)',
+            '& .MuiAlert-icon': {
+              color: '#00D2FF',
+            },
+          }}
+        >
+          <Typography variant="body2" fontWeight={500} sx={{ mb: 0.5 }}>
+            🔐 Offline Payment Process
+          </Typography>
+          <Typography variant="caption" sx={{ opacity: 0.9, display: 'block' }}>
+            Your transaction will be verified by local authorities, then broadcast to the network once enough certificates are collected.
+          </Typography>
+        </Alert>
+
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
