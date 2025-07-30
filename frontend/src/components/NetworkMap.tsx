@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, Paper, Chip, CircularProgress, Tooltip, Card, CardContent, Avatar, IconButton } from '@mui/material';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, ZoomControl } from 'react-leaflet';
 import { Icon, divIcon, LatLngBounds, LatLng } from 'leaflet';
 import CloseIcon from '@mui/icons-material/Close';
 import { AuthorityInfo, ShardInfo } from '../types/api';
@@ -135,16 +135,22 @@ const createShardIcon = (shard: ShardInfo, isHovered: boolean = false) => {
   });
 };
 
-// Position authorities around their shard center in a spiral pattern
+// Position authorities randomly within their shard center range
 const getAuthorityPosition = (shard: ShardInfo, authorityIndex: number): [number, number] => {
   const authCount = shard.authorities.length;
   if (authCount === 1) return shard.center || [0, 0];
   
-  // Create a spiral pattern
-  const spiralAngle = (authorityIndex * 2.4); // Golden angle in radians
-  const spiralRadius = (SHARD_RADIUS * 0.8 * (authorityIndex + 1)) / (authCount * 1.5) / 111000; // Convert meters to degrees
-  const lat = shard.center?.[0] || 0 + Math.cos(spiralAngle) * spiralRadius;
-  const lng = shard.center?.[1] || 0 + Math.sin(spiralAngle) * spiralRadius * Math.cos((shard.center?.[0] || 0) * Math.PI / 180);
+  // Use authority name as seed for consistent positioning
+  const authority = shard.authorities[authorityIndex];
+  const seed = authority.name.charCodeAt(0) + authority.name.charCodeAt(1) + authorityIndex;
+  
+  // Generate pseudo-random but consistent positions
+  const randomAngle = (seed * 137.5) % 360; // Golden angle approximation
+  const randomRadius = ((seed * 0.618) % 0.8) * SHARD_RADIUS / 111000; // Random radius within 80% of shard radius
+  
+  // Convert to degrees and apply to shard center
+  const lat = (shard.center?.[0] || 0) + Math.cos(randomAngle * Math.PI / 180) * randomRadius;
+  const lng = (shard.center?.[1] || 0) + Math.sin(randomAngle * Math.PI / 180) * randomRadius * Math.cos((shard.center?.[0] || 0) * Math.PI / 180);
   
   return [lat, lng];
 };
@@ -219,8 +225,8 @@ const createAuthorityIcon = (status: string, name: string, shardColor: string, i
   });
 };
 
-// Component to fit map to show the 100m area
-const FitToArea: React.FC<{ center: [number, number] }> = ({ center }) => {
+// Component to fit map to show all shards
+const FitToArea: React.FC<{ center: [number, number]; shards: ShardInfo[] }> = ({ center, shards }) => {
   const map = useMap();
 
   useEffect(() => {
@@ -248,7 +254,7 @@ const ShardTooltip: React.FC<{
       sx={{
         position: 'absolute',
         left: position.x,
-        top: position.y,
+        top: 0,
         zIndex: 1000,
         width: 400,
         maxHeight: '80vh',
@@ -270,6 +276,7 @@ const ShardTooltip: React.FC<{
         top: 0,
         backgroundColor: 'rgba(26, 31, 46, 0.95)',
         backdropFilter: 'blur(20px)',
+        zIndex: 1000,
       }}>
         <Box>
           <Typography variant="h6" sx={{ color: shard.color, mb: 0.5 }}>
@@ -365,16 +372,16 @@ const ShardTooltip: React.FC<{
                 </Box>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, fontSize: '0.875rem' }}>
                   <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                    Stake: {authority?.stake?.toLocaleString()} XTZ
+                    Stake: {authority?.state.stake?.toLocaleString()} XTZ
                   </Typography>
                   <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                    Success Rate: {((authority?.performance_metrics?.success_rate || 0) * 100).toFixed(1)}%
+                    Success Rate: {((authority?.state.performance_metrics?.success_rate || 1) * 100).toFixed(1)}%
                   </Typography>
                   {/* <Typography variant="body2" sx={{ opacity: 0.7 }}>
                     Managed Shards: {authority.shards.length}
                   </Typography> */}
                   <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                    Last Active: {new Date(authority?.last_heartbeat).toLocaleString()}
+                    Last Sync: {new Date(authority?.state.last_sync_time).toLocaleString()}
                   </Typography>
                 </Box>
               </Paper>
@@ -554,11 +561,46 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
 
   return (
     <Box sx={{ height, width: '100%', position: 'relative' }}>
+      {/* Instruction overlay */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 10,
+          left: 10,
+          zIndex: 1000,
+          backgroundColor: 'rgba(26, 31, 46, 0.9)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: 1,
+          p: 1.5,
+          maxWidth: 300,
+        }}
+      >
+        <Typography variant="body2" sx={{ color: 'white', opacity: 0.9 }}>
+          💡 <strong>Map Controls:</strong>
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'white', opacity: 0.7, display: 'block', mt: 0.5 }}>
+          • Drag to pan around the map
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'white', opacity: 0.7, display: 'block' }}>
+          • Scroll to zoom in/out
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'white', opacity: 0.7, display: 'block' }}>
+          • Click on shards to view details
+        </Typography>
+      </Box>
+
       <MapContainer
         center={DEFAULT_LOCATION}
-        zoom={18}
+        zoom={14}
         style={{ height: '100%', width: '100%' }}
         ref={mapRef}
+        zoomControl={false}
+        dragging={true}
+        doubleClickZoom={true}
+        scrollWheelZoom={true}
+        boxZoom={true}
+        keyboard={true}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -640,7 +682,8 @@ const NetworkMap: React.FC<NetworkMapProps> = ({
           </React.Fragment>
         ))}
 
-        <FitToArea center={userLocation || DEFAULT_LOCATION} />
+        <FitToArea center={userLocation || DEFAULT_LOCATION} shards={shardClusters.current} />
+        <ZoomControl position="bottomright" />
       </MapContainer>
 
       <ShardTooltip

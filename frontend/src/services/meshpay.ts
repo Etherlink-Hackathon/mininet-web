@@ -236,13 +236,7 @@ export function useDepositToMeshPay() {
     if (!contractAddresses?.meshpay) {
       throw new Error('Contract addresses not configured');
     }
-    console.log({
-      address: contractAddresses.meshpay,
-      abi: MESHPAY_CONTRACT.abi,
-      functionName: 'handleFundingTransaction',
-      args: [tokenConfig.address, amount],
-      gas: overrideGas.deposit(amount.toString()),
-    })
+
     try {
       await writeContract({
         address: contractAddresses.meshpay,

@@ -39,7 +39,7 @@ export const SUPPORTED_TOKENS = {
     symbol: 'WTZ',
     name: 'Wrapped Tezos',
     isNative: false,
-    icon: '/xtz.svg',
+    icon: '/wtz.webp',
   },
   USDT: {
     address: import.meta.env.VITE_USDT_CONTRACT_ADDRESS as Address,

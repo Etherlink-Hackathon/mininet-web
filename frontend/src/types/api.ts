@@ -31,9 +31,11 @@ export interface AuthorityInfo {
   status: 'online' | 'offline' | 'syncing' | 'unknown';
   shards: ShardInfo[];
   committee_members: string[];
-  last_heartbeat: string; // ISO date string
-  performance_metrics: Record<string, number>;
-  stake: number;
+  state: {
+    last_sync_time: string; // ISO date string
+    performance_metrics: Record<string, number>;
+    stake: number;
+  };
   network_info: {
     host: string;
     port: number;
@@ -151,7 +153,7 @@ export interface WebSocketMessage {
 export interface PaymentFormData {
   sender: string;
   recipient: string;
-  amount: bigint;
+  amount: string;
   token_address: string;
   sequence_number: number;
 }

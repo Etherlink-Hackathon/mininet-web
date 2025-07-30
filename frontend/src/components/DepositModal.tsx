@@ -46,6 +46,8 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [balance, setBalance] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const isTransactionPending = depositStatus.isPending;
+  const isTransactionCompleted = depositStatus.currentStep === 'completed';
 
   useEffect(() => {
     if (
@@ -127,7 +129,8 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
       setError('Amount must be greater than 0');
       return false;
     }
-    if (accountInfo && accountInfo.balances && accountInfo.balances[token] && parseFloat(amount) > parseFloat(accountInfo.balances[token].wallet_balance.toString())) {
+
+    if (accountInfo.address && accountInfo.balances && accountInfo.balances[token] && parseFloat(amount) > parseFloat(accountInfo.balances[token].wallet_balance.toString())) {
       setError('Insufficient wallet balance');
       return false;
     }
@@ -167,9 +170,6 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
   const getTokenConfig = (tokenSymbol: TokenSymbol) => {
     return SUPPORTED_TOKENS[tokenSymbol as keyof typeof SUPPORTED_TOKENS];
   };
-
-  const isTransactionPending = depositStatus.isPending;
-  const isTransactionCompleted = depositStatus.currentStep === 'completed';
 
   return (
     <Dialog 
@@ -244,7 +244,7 @@ const DepositModal: React.FC<DepositModalProps> = ({ open, onClose }) => {
         )}
 
         <Box sx={{ mb: 3 }}>
-          <FormControl fullWidth sx={{ mb: 2 }}>
+          <FormControl fullWidth sx={{ mb: 2, mt: 2 }}>
             <InputLabel>Token</InputLabel>
             <Select
               value={token}

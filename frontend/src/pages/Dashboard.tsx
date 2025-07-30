@@ -60,7 +60,7 @@ const Dashboard: React.FC = () => {
     onlineAuthorities: 0,
     totalAuthorities: 0,
     averageLatency: 0,
-    successRate: 95.5,
+    successRate: 100,
   });
 
   const [authorities, setAuthorities] = useState<AuthorityInfo[]>([]);
@@ -73,13 +73,13 @@ const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
+      fetchData();
       const [shardsData, authoritiesData, metricsData] = await Promise.all([
         apiService.getShards(),
         apiService.getAuthorities(),
         apiService.getNetworkMetrics(),
       ]);
-      console.log(authoritiesData);
-      console.log(shardsData);
+
       setAuthorities(authoritiesData);
       setShards(shardsData);
       setNetworkMetrics(metricsData);
@@ -125,7 +125,7 @@ const Dashboard: React.FC = () => {
       {/* All Dashboard Cards in Single Row */}
       <Grid container spacing={3} mb={4}>
         {/* MeshPay Balance Card */}
-        {isConnected && accountInfo.balances && (
+        {isConnected && (
           <Grid item xs={12} md={6}>
             <Card sx={{ 
               background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(108, 92, 231, 0.1) 100%)',
@@ -184,11 +184,11 @@ const Dashboard: React.FC = () => {
                 </Box>
 
                 <Grid container spacing={2}>
-                  {Object.entries(accountInfo.balances).map(([symbol, balanceData]: [string, any]) => {
+                  {accountInfo.balances && Object.entries(accountInfo.balances).map(([symbol, balanceData]: [string, any]) => {
                     const tokenCfg = SUPPORTED_TOKENS[balanceData.token_symbol as TokenSymbol];
                     const meshpayBalance = parseFloat(balanceData.meshpay_balance || 0);
                     const walletBalance = parseFloat(balanceData.wallet_balance || 0);
-                    
+                   
                     if (meshpayBalance > 0 || walletBalance > 0) {
                       return (
                         <Grid item xs={6} key={symbol}>
@@ -230,10 +230,7 @@ const Dashboard: React.FC = () => {
                   })}
                 </Grid>
 
-                {Object.values(accountInfo.balances).every((balance: any) => 
-                  parseFloat(balance.meshpay_balance || 0) === 0 && 
-                  parseFloat(balance.wallet_balance || 0) === 0
-                ) && (
+                {!accountInfo.balances && (
                   <Box textAlign="center" py={3}>
                     <Typography variant="body1" color="text.secondary" mb={2}>
                       No balances available
@@ -316,9 +313,6 @@ const Dashboard: React.FC = () => {
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} px={2}>
                 <Typography variant="h3">
                   Network Status
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Click on a shard to view details
                 </Typography>
               </Box>
               <Box sx={{ height: 'calc(100% - 48px)' }}>

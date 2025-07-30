@@ -147,6 +147,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   };
   
   const updateCachedBalance = (tokenAddress: string, amount: string) => {
+    if (!accountInfo.balances) return;
     cacheService.set('walletAccount', {
       ...accountInfo,
       balances: {
@@ -217,7 +218,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   // Watch for deposit flow completion
   useEffect(() => {
     if (isDepositFlowSuccess) {
-      setDepositStatus(prev => ({ ...prev, currentStep: 'completed' }));
+      setDepositStatus(prev => ({ ...prev, isPending: false, currentStep: 'completed' }));
       fetchData();
     }
   }, [isDepositFlowSuccess]);
