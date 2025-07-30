@@ -14,244 +14,33 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  LinearProgress,
-  Chip,
-  Paper,
-  Tooltip,
-  IconButton,
 } from '@mui/material';
-import { Send, CheckCircle, Security, Radio, Info } from '@mui/icons-material';
+import { Send, Info } from '@mui/icons-material';
 import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
 import { apiService } from '../services/api';
 import { useWalletContext } from '../context/WalletContext';
 import { parseUnits } from 'viem';
 import { usePrivy, useWallets } from "@privy-io/react-auth";
+import ProcessInfoTooltip from './ProcessInfoTooltip';
 
 interface QuickPaymentModalProps {
   open: boolean;
   onClose: () => void;
   shards: any[]; // You can type this properly based on your shard structure
+  onTransferStart: (transferData: {
+    sender: string;
+    recipient: string;
+    amount: string;
+    token: TokenSymbol;
+    sequence_number: number;
+  }) => void;
 }
-
-// Informational tooltip component explaining the process
-const ProcessInfoTooltip: React.FC = () => {
-  return (
-    <Tooltip
-      title={
-        <Box sx={{ p: 1, maxWidth: 300 }}>
-          <Typography variant="subtitle2" sx={{ color: 'white', mb: 1, fontWeight: 600 }}>
-            🔐 MeshPay Transaction Process
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-              <strong>Step 1:</strong> Authorities verify your transaction locally
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-              <strong>Step 2:</strong> Collect certificates from 2/3 of authorities
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-              <strong>Step 3:</strong> Broadcast confirmation to finalize
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1, display: 'block' }}>
-              💡 This ensures offline payments work without internet!
-            </Typography>
-          </Box>
-        </Box>
-      }
-      arrow
-      placement="top"
-      PopperProps={{
-        sx: {
-          '& .MuiTooltip-tooltip': {
-            backgroundColor: 'rgba(26, 31, 46, 0.95)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: 2,
-            fontSize: '0.875rem',
-            maxWidth: 350,
-          },
-          '& .MuiTooltip-arrow': {
-            color: 'rgba(26, 31, 46, 0.95)',
-          },
-        },
-      }}
-    >
-      <IconButton
-        size="small"
-        sx={{
-          color: 'rgba(255, 255, 255, 0.7)',
-          '&:hover': {
-            color: 'rgba(0, 210, 255, 0.8)',
-          },
-        }}
-      >
-        <Info fontSize="small" />
-      </IconButton>
-    </Tooltip>
-  );
-};
-
-// Separate Transfer Progress Modal Component
-const TransferProgressModal: React.FC<{
-  open: boolean;
-  onClose: () => void;
-  transferProgress: {
-    isProcessing: boolean;
-    successfulAuthorities: number;
-    totalAuthorities: number;
-    currentStep: string;
-    stepMessage: string;
-  };
-  onBroadcastConfirmation: () => void;
-}> = ({ open, onClose, transferProgress, onBroadcastConfirmation }) => {
-  const hasEnoughAuthorities = transferProgress.successfulAuthorities >= Math.ceil(transferProgress.totalAuthorities * 2/3);
-  const isCompleted = transferProgress.currentStep === 'completed';
-
-  return (
-    <Dialog 
-      open={open} 
-      onClose={onClose}
-      maxWidth="sm" 
-      fullWidth
-      PaperProps={{
-        sx: {
-          background: 'rgba(26, 31, 46, 0.95)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-        }
-      }}
-    >
-      <DialogTitle 
-        sx={{ 
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(108, 92, 231, 0.1) 100%)'
-        }}
-      >
-        <Box display="flex" alignItems="center" gap={2}>
-          <Security color="primary" />
-          <Typography variant="h6" fontWeight={600}>
-            Authority Verification
-          </Typography>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent sx={{ p: 3 }}>
-        {/* Progress Status */}
-        <Paper
-          sx={{
-            p: 3,
-            mb: 3,
-            mt: 3,
-            background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(108, 92, 231, 0.1) 100%)',
-            border: '1px solid rgba(0, 210, 255, 0.2)',
-            borderRadius: 2,
-          }}
-        >
-          {/* Progress Bar */}
-          <Box mb={2}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-              <Typography variant="body2" color="text.secondary">
-                {transferProgress.stepMessage}
-              </Typography>
-              <Typography variant="body2" fontWeight={500}>
-                {transferProgress.successfulAuthorities}/{transferProgress.totalAuthorities}
-              </Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={(transferProgress.successfulAuthorities / transferProgress.totalAuthorities) * 100}
-              sx={{
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                '& .MuiLinearProgress-bar': {
-                  background: 'linear-gradient(90deg, #00D2FF 0%, #6C5CE7 100%)',
-                  borderRadius: 4,
-                  transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                },
-              }}
-            />
-          </Box>
-
-          {/* Authority Status */}
-          <Box display="flex" gap={1} flexWrap="wrap" mb={2}>
-            {Array.from({ length: transferProgress.totalAuthorities }, (_, index) => (
-              <Chip
-                key={index}
-                icon={index < transferProgress.successfulAuthorities ? <CheckCircle /> : <CircularProgress size={16} />}
-                label={`Authority ${index + 1}`}
-                size="small"
-                sx={{
-                  bgcolor: index < transferProgress.successfulAuthorities 
-                    ? 'rgba(76, 175, 80, 0.2)' 
-                    : 'rgba(255, 255, 255, 0.1)',
-                  color: index < transferProgress.successfulAuthorities ? '#4CAF50' : 'white',
-                  border: index < transferProgress.successfulAuthorities 
-                    ? '1px solid rgba(76, 175, 80, 0.3)' 
-                    : '1px solid rgba(255, 255, 255, 0.2)',
-                  transition: 'all 0.3s ease',
-                  '& .MuiChip-icon': {
-                    color: index < transferProgress.successfulAuthorities ? '#4CAF50' : '#00D2FF',
-                  },
-                }}
-              />
-            ))}
-          </Box>
-
-        </Paper>
-
-        {/* Certificate Status */}
-        {hasEnoughAuthorities && (
-          <Alert 
-            severity="success" 
-            sx={{ 
-              mb: 2,
-              background: 'rgba(76, 175, 80, 0.1)',
-              border: '1px solid rgba(76, 175, 80, 0.3)',
-              '& .MuiAlert-icon': {
-                color: '#4CAF50',
-              },
-            }}
-          >
-            <Typography variant="body2" fontWeight={500}>
-              ✅ We have received enough certificates ({transferProgress.successfulAuthorities}/{transferProgress.totalAuthorities} authorities)
-            </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.8, display: 'block', mt: 0.5 }}>
-              The transaction can now be broadcast to the network for final confirmation.
-            </Typography>
-          </Alert>
-        )}
-
-      </DialogContent>
-
-      <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-        <Button onClick={onClose}>
-          {isCompleted ? 'Close' : 'Cancel'}
-        </Button>
-        {hasEnoughAuthorities && (
-          <Button
-            variant="contained"
-            onClick={onBroadcastConfirmation}
-            startIcon={<Radio />}
-            sx={{
-              background: 'linear-gradient(135deg, #4CAF50 0%, #45A049 100%)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%)',
-              },
-            }}
-          >
-            Broadcast Confirmation
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
-  );
-};
 
 const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   open,
   onClose,
   shards,
+  onTransferStart,
 }) => {
   const [amount, setAmount] = useState('');
   const [recipient, setRecipient] = useState('');
@@ -260,14 +49,6 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [data, setData] = useState<any>(null);
-  const [transferProgress, setTransferProgress] = useState({
-    isProcessing: false,
-    successfulAuthorities: 0,
-    totalAuthorities: 0,
-    currentStep: 'idle', // 'idle' | 'processing' | 'completed' | 'failed'
-    stepMessage: '',
-  });
   const { wallets } = useWallets();
   const primaryWallet = wallets[0];
   const walletAddress = primaryWallet?.address;
@@ -275,42 +56,14 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   const { accountInfo } = useWalletContext();
 
   useEffect(() => {
-    if(data && data.success) {
-      setSuccess(true);
+    if(success) {
       setError('');
       setAmount('');
       setRecipient('');
       setSelectedCluster('');
-      setTransferProgress(prev => ({ ...prev, currentStep: 'completed' }));
     }
-  }, [data]);
+  }, [success]);
 
-  // Simulate authority confirmations
-  useEffect(() => {
-    if (transferProgress.isProcessing && transferProgress.totalAuthorities > 0) {
-      const interval = setInterval(() => {
-        setTransferProgress(prev => {
-          if (prev.successfulAuthorities < prev.totalAuthorities) {
-            return {
-              ...prev,
-              successfulAuthorities: prev.successfulAuthorities + 1,
-              stepMessage: `Authority ${prev.successfulAuthorities + 1} confirmed...`
-            };
-          } else {
-            clearInterval(interval);
-            return {
-              ...prev,
-              currentStep: 'completed',
-              stepMessage: 'All authorities confirmed!'
-            };
-          }
-        });
-      }, 800); // Simulate each authority taking 800ms
-
-      return () => clearInterval(interval);
-    }
-  }, [transferProgress.isProcessing, transferProgress.totalAuthorities]);
-  
   const handleSubmit = async () => {
     if (!amount || !recipient || !selectedCluster) {
       setError('Please fill in all fields');
@@ -320,77 +73,31 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
     setLoading(true);
     setError('');
     setSuccess(false);
-    
-    // Start progress tracking
-    setTransferProgress({
-      isProcessing: true,
-      successfulAuthorities: 0,
-      totalAuthorities: 3, // Simulate 3 authorities
-      currentStep: 'processing',
-      stepMessage: 'Initiating transfer...'
-    });
 
     try {
-      // Simulate payment processing
-      const data = await apiService.transfer({
-        sender: walletAddress,
+      // Call the parent callback to start transfer process
+      onTransferStart({
+        sender: walletAddress || '',
         recipient: recipient,
         amount: parseUnits(amount, SUPPORTED_TOKENS[token].decimals).toString(),
+        token: token,
         sequence_number: accountInfo.sequence_number + 1,
-        token_address: SUPPORTED_TOKENS[token].address,
       });
-      setData(data);
+      
+      // Close this modal
+      onClose();
     } catch (err) {
       setError('Payment failed. Please try again.');
-      setTransferProgress(prev => ({ ...prev, currentStep: 'failed' }));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBroadcastConfirmation = async () => {
-    try {
-      // Here you would implement the actual broadcast logic
-      console.log('Broadcasting confirmation to network...');
-      
-      // Simulate broadcast success
-      setTransferProgress(prev => ({ 
-        ...prev, 
-        currentStep: 'broadcasted',
-        stepMessage: 'Transaction broadcasted successfully!'
-      }));
-      
-      // Close the progress modal after a delay
-      setTimeout(() => {
-        setTransferProgress({
-          isProcessing: false,
-          successfulAuthorities: 0,
-          totalAuthorities: 0,
-          currentStep: 'idle',
-          stepMessage: '',
-        });
-        onClose();
-      }, 2000);
-      
-    } catch (error) {
-      console.error('Broadcast failed:', error);
-      setError('Broadcast failed. Please try again.');
-    }
-  };
-
   const handleClose = () => {
-    if (!loading && !transferProgress.isProcessing) {
+    if (!loading) {
       onClose();
       setError('');
       setSuccess(false);
-      setData(null);
-      setTransferProgress({
-        isProcessing: false,
-        successfulAuthorities: 0,
-        totalAuthorities: 0,
-        currentStep: 'idle',
-        stepMessage: '',
-      });
     }
   };
 
@@ -405,25 +112,6 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ pt: 2 }}>
-        {/* Process Information Alert */}
-        <Alert 
-          severity="info" 
-          sx={{ 
-            mb: 2,
-            background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(108, 92, 231, 0.1) 100%)',
-            border: '1px solid rgba(0, 210, 255, 0.3)',
-            '& .MuiAlert-icon': {
-              color: '#00D2FF',
-            },
-          }}
-        >
-          <Typography variant="body2" fontWeight={500} sx={{ mb: 0.5 }}>
-            🔐 Offline Payment Process
-          </Typography>
-          <Typography variant="caption" sx={{ opacity: 0.9, display: 'block' }}>
-            Your transaction will be verified by local authorities, then broadcast to the network once enough certificates are collected.
-          </Typography>
-        </Alert>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -516,7 +204,7 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
         <Button
           onClick={handleSubmit}
           variant="contained"
-          disabled={loading || !amount || !recipient || !selectedCluster || transferProgress.isProcessing}
+          disabled={loading || !amount || !recipient || !selectedCluster}
           startIcon={loading ? <CircularProgress size={16} /> : <Send />}
           sx={{
             background: 'linear-gradient(135deg, #00D2FF 0%, #6C5CE7 100%)',
@@ -532,24 +220,6 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
           {loading ? 'Sending...' : 'Send'}
         </Button>
       </DialogActions>
-
-      {/* Transfer Progress Modal */}
-      <TransferProgressModal
-        open={transferProgress.isProcessing}
-        onClose={() => {
-          if (transferProgress.currentStep === 'completed' || transferProgress.currentStep === 'broadcasted') {
-            setTransferProgress({
-              isProcessing: false,
-              successfulAuthorities: 0,
-              totalAuthorities: 0,
-              currentStep: 'idle',
-              stepMessage: '',
-            });
-          }
-        }}
-        transferProgress={transferProgress}
-        onBroadcastConfirmation={handleBroadcastConfirmation}
-      />
     </Dialog>
   );
 };

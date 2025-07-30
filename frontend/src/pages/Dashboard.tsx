@@ -29,6 +29,7 @@ import { apiService } from '../services/api';
 import QuickPaymentModal from '../components/QuickPaymentModal';
 import DepositModal from '../components/DepositModal';
 import NetworkMap from '../components/NetworkMap';
+import TransferProgressModal, { TransferProgress } from '../components/TransferProgressModal';
 
 interface DashboardStats {
   onlineAuthorities: number;
@@ -69,6 +70,14 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [transferProgressModalOpen, setTransferProgressModalOpen] = useState(false);
+  const [transferProgress, setTransferProgress] = useState<TransferProgress>({
+    isProcessing: false,
+    successfulAuthorities: 0,
+    totalAuthorities: 3,
+    currentStep: 'idle',
+    stepMessage: '',
+  });
 
   const loadDashboardData = async () => {
     try {
@@ -104,6 +113,92 @@ const Dashboard: React.FC = () => {
     const interval = setInterval(loadDashboardData, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Handle transfer start from QuickPaymentModal
+  const handleTransferStart = async (transferData: {
+    sender: string;
+    recipient: string;
+    amount: string;
+    token: TokenSymbol;
+    sequence_number: number;
+  }) => {
+    try {
+      // Start the transfer progress
+      setTransferProgress({
+        isProcessing: true,
+        successfulAuthorities: 0,
+        totalAuthorities: 3,
+        currentStep: 'processing',
+        stepMessage: 'Initiating transfer...',
+      });
+      setTransferProgressModalOpen(true);
+
+      // Simulate the API call
+      const data = await apiService.transfer({
+        sender: transferData.sender,
+        recipient: transferData.recipient,
+        amount: transferData.amount,
+        sequence_number: transferData.sequence_number,
+        token_address: SUPPORTED_TOKENS[transferData.token].address,
+      });
+
+      // Start simulating authority confirmations
+      simulateAuthorityConfirmations();
+    } catch (error) {
+      console.error('Transfer failed:', error);
+      setTransferProgress(prev => ({ ...prev, currentStep: 'failed' }));
+    }
+  };
+
+  // Simulate authority confirmations
+  const simulateAuthorityConfirmations = () => {
+    let currentAuthority = 0;
+    const interval = setInterval(() => {
+      if (currentAuthority < transferProgress.totalAuthorities) {
+        setTransferProgress(prev => ({
+          ...prev,
+          successfulAuthorities: currentAuthority + 1,
+          stepMessage: `Authority ${currentAuthority + 1} confirmed...`,
+        }));
+        currentAuthority++;
+      } else {
+        clearInterval(interval);
+        setTransferProgress(prev => ({
+          ...prev,
+          currentStep: 'completed',
+          stepMessage: 'All authorities confirmed!',
+        }));
+      }
+    }, 800);
+  };
+
+  // Handle broadcast confirmation
+  const handleBroadcastConfirmation = async () => {
+    try {
+      console.log('Broadcasting confirmation to network...');
+      
+      setTransferProgress(prev => ({ 
+        ...prev, 
+        currentStep: 'broadcasted',
+        stepMessage: 'Transaction broadcasted successfully!'
+      }));
+      
+      // Close the progress modal after a delay
+      setTimeout(() => {
+        setTransferProgressModalOpen(false);
+        setTransferProgress({
+          isProcessing: false,
+          successfulAuthorities: 0,
+          totalAuthorities: 3,
+          currentStep: 'idle',
+          stepMessage: '',
+        });
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Broadcast failed:', error);
+    }
+  };
 
   /* Format numeric or string balances with thousands separators */
   const formatBalance = (balance: string | number): string => {
@@ -384,12 +479,21 @@ const Dashboard: React.FC = () => {
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         shards={shards}
+        onTransferStart={handleTransferStart}
       />
-
+      
       {/* Deposit Modal */}
       <DepositModal
         open={depositModalOpen}
         onClose={() => setDepositModalOpen(false)}
+      />
+
+      {/* Transfer Progress Modal */}
+      <TransferProgressModal
+        open={transferProgressModalOpen}
+        onClose={() => setTransferProgressModalOpen(false)}
+        transferProgress={transferProgress}
+        onBroadcastConfirmation={handleBroadcastConfirmation}
       />
     </Container>
   );
