@@ -6,7 +6,6 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from ...services.blockchain_client import blockchain_client, AccountInfo, TokenBalance, ContractStats
-from ...services.mesh_client import mesh_client
 
 router = APIRouter()
 
@@ -100,7 +99,7 @@ async def get_wallet_balances(address: str) -> WalletBalancesResponse:
         Complete balance information for all supported tokens
     """
     try:
-        balances = await mesh_client.get_wallet_balances(address)
+        balances = await blockchain_client.get_account_balances(address)
         
         balance_responses = [
             TokenBalanceResponse(

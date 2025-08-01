@@ -9,9 +9,11 @@ import type {
   WalletBalances,
   NetworkTopology,
   Certificate,
-  PaymentFormData,
+  TransferOrder,
   ShardInfo,
   AccountInfo,
+  ConfirmationOrder,
+  CertifiedTransferOrder,
 } from '../types/api';
 
 // ---------------------------------------------------------------------------
@@ -145,15 +147,27 @@ class ApiService {
    * Send transfer through chosen authority.
    * Backend signature: POST /transfer
    */
-  async transfer(payload: PaymentFormData): Promise<any> {
+  async transfer(payload: {transfer_order: TransferOrder}): Promise<any> {
     try {
       const { data } = await this.client.post('/transfer', payload);
-      
-      // TODO: Update relevant caches after successful transfer
-      
       return data;
     } catch (error) {
       console.error('Transfer failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Broadcast transfer to the network.
+   * Backend signature: POST /confirm
+   */
+  async confirm(payload: ConfirmationOrder): Promise<any> {
+    try {
+
+      const { data } = await this.client.post('/confirm', payload);
+      return data;
+    } catch (error) {
+      console.error('Broadcast failed:', error);
       throw error;
     }
   }

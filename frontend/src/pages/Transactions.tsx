@@ -134,7 +134,7 @@ const Transactions: React.FC = () => {
   const filteredTransactions = transactions.filter(tx => {
     if (!isTransactionRecord(tx)) return false;
     
-    const matchesToken = filterToken === 'all' || tx.transfer_order.token === filterToken;
+    const matchesToken = filterToken === 'all' || tx.transfer_order.token_address === filterToken;
     const matchesStatus = filterStatus === 'all' || tx.status === filterStatus;
     const matchesSearch = searchQuery === '' || 
       tx.transaction_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -296,7 +296,7 @@ const Transactions: React.FC = () => {
                       </Typography>
                     </Tooltip>
                   </TableCell>
-                  <TableCell>{tx.transfer_order.token}</TableCell>
+                  <TableCell>{tx.transfer_order.token_address}</TableCell>
                   <TableCell>${formatAmount(tx.transfer_order.amount)}</TableCell>
                   <TableCell>
                     <Tooltip title={tx.transfer_order.recipient}>
@@ -366,7 +366,7 @@ const Transactions: React.FC = () => {
 
               <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>Transaction Details</Typography>
               <Typography variant="body2" gutterBottom color="text.secondary">
-                Amount: ${formatAmount(selectedCertificate.transfer_order.amount)} {selectedCertificate.transfer_order.token}
+                Amount: ${formatAmount(selectedCertificate.transfer_order.amount)} {selectedCertificate.transfer_order.token_address}
               </Typography>
               <Typography variant="body2" gutterBottom color="text.secondary">
                 Recipient: {selectedCertificate.transfer_order.recipient}
@@ -380,7 +380,11 @@ const Transactions: React.FC = () => {
                 {selectedCertificate.authority_signatures.map((sig, index) => (
                   <Chip
                     key={index}
-                    label={`${sig.authority_name} (${new Date(sig.timestamp).toLocaleTimeString()})`}
+                    label={`${sig.transfer_order.sender} (${
+                      sig.transfer_order.timestamp
+                        ? new Date(sig.transfer_order.timestamp).toLocaleTimeString()
+                        : "Unknown time"
+                    })`}
                     size="small"
                     color="primary"
                     sx={{ mr: 1, mb: 1 }}

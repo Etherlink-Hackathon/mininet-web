@@ -261,7 +261,7 @@ const Wallet: React.FC = () => {
                       {new Date(tx.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      {tx.transfer_order.token}
+                      {tx.transfer_order.token_address}
                     </TableCell>
                     <TableCell>
                       {formatBalance(tx.transfer_order.amount.toString())}

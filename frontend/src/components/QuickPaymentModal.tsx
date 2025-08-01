@@ -22,25 +22,26 @@ import { useWalletContext } from '../context/WalletContext';
 import { parseUnits } from 'viem';
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import ProcessInfoTooltip from './ProcessInfoTooltip';
+import { TransferOrder } from '../types/api';
+import { TransferProgress } from '../components/TransferProgressModal';
+import { v4 as uuidv4 } from 'uuid';
 
 interface QuickPaymentModalProps {
   open: boolean;
   onClose: () => void;
   shards: any[]; // You can type this properly based on your shard structure
-  onTransferStart: (transferData: {
-    sender: string;
-    recipient: string;
-    amount: string;
-    token: TokenSymbol;
-    sequence_number: number;
-  }) => void;
+  setTransferProgress: (progress: any) => void;
+  transferOrder: TransferOrder;
+  setTransferOrder: (order: TransferOrder) => void;
 }
 
 const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   open,
   onClose,
   shards,
-  onTransferStart,
+  setTransferProgress,
+  transferOrder,
+  setTransferOrder
 }) => {
   const [amount, setAmount] = useState('');
   const [recipient, setRecipient] = useState('');
@@ -53,7 +54,7 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   const primaryWallet = wallets[0];
   const walletAddress = primaryWallet?.address;
 
-  const { accountInfo } = useWalletContext();
+  const { accountInfo, updateCachedSequenceNumber } = useWalletContext();
 
   useEffect(() => {
     if(success) {
@@ -75,19 +76,35 @@ const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
     setSuccess(false);
 
     try {
-      // Call the parent callback to start transfer process
-      onTransferStart({
+      const transferOrder = {
+        order_id: uuidv4(),
         sender: walletAddress || '',
         recipient: recipient,
-        amount: parseUnits(amount, SUPPORTED_TOKENS[token].decimals).toString(),
-        token: token,
-        sequence_number: accountInfo.sequence_number + 1,
+        amount: parseFloat(amount),
+        token_address: SUPPORTED_TOKENS[token].address,
+        sequence_number: accountInfo.sequence_number,
+        signature: null,
+        timestamp: new Date().toISOString(),
+      };
+      
+      setTransferOrder(transferOrder);
+      
+      console.log('Transfer order:', transferOrder);
+      await apiService.transfer({
+        transfer_order: transferOrder,
       });
       
-      // Close this modal
-      onClose();
+      setTransferProgress((prev: any) => ({
+        ...prev,
+        currentStep: 'processing',
+      }));
+      updateCachedSequenceNumber(accountInfo.sequence_number + 1);
     } catch (err) {
-      setError('Payment failed. Please try again.');
+      setError('Payment failed: ' + (err as any).response.data.error);
+      setTransferProgress((prev: any) => ({
+        ...prev,
+        currentStep: 'failed',
+      }));
     } finally {
       setLoading(false);
     }

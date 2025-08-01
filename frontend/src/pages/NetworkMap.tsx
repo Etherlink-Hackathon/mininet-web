@@ -226,13 +226,13 @@ const NetworkMapPage: React.FC = () => {
                 <Box mb={3}>
                   <Typography variant="h6" gutterBottom>Performance Metrics</Typography>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Latency:</strong> {selectedAuthority.performance_metrics.latency}ms
+                    <strong>Latency:</strong> {selectedAuthority.state.performance_metrics.latency}ms
                   </Typography>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Throughput:</strong> {selectedAuthority.performance_metrics.throughput} tx/s
+                    <strong>Throughput:</strong> {selectedAuthority.state.performance_metrics.throughput} tx/s
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    <strong>Stake:</strong> {selectedAuthority.stake.toLocaleString()} tokens
+                    <strong>Stake:</strong> {selectedAuthority.state.stake.toLocaleString()} tokens
                   </Typography>
                 </Box>
 
@@ -275,7 +275,7 @@ const NetworkMapPage: React.FC = () => {
                 <Box mt={3} pt={2} sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
                   <Typography variant="body2" color="text.secondary">
                     <strong>Last Heartbeat:</strong><br />
-                    {new Date(selectedAuthority.last_heartbeat).toLocaleString()}
+                    {new Date(selectedAuthority.state.last_sync_time).toLocaleString()}
                   </Typography>
                 </Box>
               </CardContent>

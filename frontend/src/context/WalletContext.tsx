@@ -44,6 +44,7 @@ interface WalletContextType {
   // Cache management
   getCachedBalance: () => AccountInfo | null;
   updateCachedBalance: (tokenAddress: string, amount: string) => void;
+  updateCachedSequenceNumber: (sequence_number: number) => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -169,7 +170,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
     });
   };
-
+  const updateCachedSequenceNumber = (sequence_number: number) => {
+    cacheService.set('walletAccount', {
+      ...accountInfo,
+      sequence_number: sequence_number,
+    });
+  };
   /**
    * Initiates a deposit to the MeshPay contract.
    *
@@ -276,6 +282,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     clearErrors,
     getCachedBalance,
     updateCachedBalance,
+    updateCachedSequenceNumber,
   };
 
   return <WalletContext.Provider value={contextValue}>{children}</WalletContext.Provider>;

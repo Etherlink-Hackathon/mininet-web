@@ -173,7 +173,7 @@ const TransferProgressModal: React.FC<TransferProgressModalProps> = ({
               },
             }}
           >
-            Broadcast Confirmation
+            {transferProgress.currentStep === 'broadcasted' ? 'Transaction Confirmed' : 'Broadcast Confirmation'}
           </Button>
         )}
       </DialogActions>

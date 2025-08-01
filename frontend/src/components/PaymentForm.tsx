@@ -17,14 +17,14 @@ import { Send as SendIcon, AccountBalanceWallet } from '@mui/icons-material';
 import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
 
 // Define payment form data structure
-export interface PaymentFormData {
+export interface TransferOrder {
   recipient: string;
   amount: number;
   token: TokenSymbol;
 }
 
 interface PaymentFormProps {
-  onSubmit: (data: PaymentFormData) => Promise<void>;
+  onSubmit: (data: TransferOrder) => Promise<void>;
   balance: {
     [K in TokenSymbol]: number;
   };
@@ -32,7 +32,7 @@ interface PaymentFormProps {
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = false }) => {
-  const [formData, setFormData] = useState<PaymentFormData>({
+  const [formData, setFormData] = useState<TransferOrder>({
     recipient: '',
     amount: 0,
     token: 'XTZ',
@@ -72,7 +72,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
     }
   };
 
-  const handleChange = (field: keyof PaymentFormData) => (
+  const handleChange = (field: keyof TransferOrder) => (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     setFormData(prev => ({
@@ -82,7 +82,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ onSubmit, balance, loading = 
     setError(''); // Clear error when user types
   };
 
-  const handleSelectChange = (field: keyof PaymentFormData) => (
+  const handleSelectChange = (field: keyof TransferOrder) => (
     event: any
   ) => {
     setFormData(prev => ({

@@ -12,7 +12,7 @@ export const privyConfig: PrivyClientConfig = {
   appearance: {
     theme: 'dark',
     accentColor: '#00D2FF',
-    logo: '/logo192.png',
+    logo: '/logo.png',
     showWalletLoginFirst: true,
   },
   defaultChain: etherlink,

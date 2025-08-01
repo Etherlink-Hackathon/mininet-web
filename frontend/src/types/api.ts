@@ -1,5 +1,7 @@
 // TypeScript interfaces for the Etherlink Offline Payment API
 
+import { UUID } from "crypto";
+
 export interface Position {
   x: number;
   y: number;
@@ -53,24 +55,27 @@ export interface NetworkMetrics {
 }
 
 export interface TransferOrder {
-  order_id: string;
+  order_id?: string;
   sender: string;
   recipient: string;
   amount: number;
-  token: 'USDT' | 'USDC';
+  token_address: string;
   sequence_number: number;
-  timestamp: string; // ISO date string
-  signature?: string;
+  signature: string | null;
+  timestamp?: string; 
+}
+
+export interface CertifiedTransferOrder {
+  transfer_order: TransferOrder;
+  authority_signatures: string[];
 }
 
 export interface ConfirmationOrder {
-  confirmation_id: string;
-  transfer_order_id: string;
-  authority_name: string;
-  confirmed: boolean;
-  signature: string;
-  timestamp: string; // ISO date string
-  certificate?: string;
+  order_id: string;
+  transfer_order: TransferOrder;
+  authority_signatures: string[];
+  timestamp: string;
+  status: 'pending' | 'confirmed' | 'failed' | 'timeout';
 }
 
 export interface TransactionRecord {
@@ -82,6 +87,9 @@ export interface TransactionRecord {
   completed_at?: string; // ISO date string
   error_message?: string;
 }
+
+
+
 
 export interface Certificate {
   certificate_id: string;
@@ -147,15 +155,6 @@ export interface WebSocketMessage {
   type: 'authority_update' | 'transaction_update' | 'network_metrics' | 'heartbeat';
   data: any;
   timestamp: string;
-}
-
-// Form types
-export interface PaymentFormData {
-  sender: string;
-  recipient: string;
-  amount: string;
-  token_address: string;
-  sequence_number: number;
 }
 
 export interface AuthoritySelectionData {

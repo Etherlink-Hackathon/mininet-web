@@ -24,12 +24,13 @@ import {
 import { useWalletContext } from '../context/WalletContext';
 import { SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
 
-import { AuthorityInfo, ShardInfo, NetworkMetrics } from '../types/api';
+import { AuthorityInfo, ShardInfo, NetworkMetrics, TransferOrder, ConfirmationOrder } from '../types/api';
 import { apiService } from '../services/api';
 import QuickPaymentModal from '../components/QuickPaymentModal';
 import DepositModal from '../components/DepositModal';
 import NetworkMap from '../components/NetworkMap';
 import TransferProgressModal, { TransferProgress } from '../components/TransferProgressModal';
+import { v4 as uuidv4 } from 'uuid';
 
 interface DashboardStats {
   onlineAuthorities: number;
@@ -49,7 +50,7 @@ const Dashboard: React.FC = () => {
     fetchData,
     address,
   } = useWalletContext();
-  
+
   // Refresh data when account changes
   useEffect(() => {
     if (isConnected && address) {
@@ -70,6 +71,16 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [transferOrder, setTransferOrder] = useState<TransferOrder>({
+    order_id: '',
+    sender: '',
+    recipient: '',
+    amount: 0,
+    token_address: '',
+    sequence_number: 0,
+    signature: '',
+    timestamp: '',
+  });
   const [transferProgressModalOpen, setTransferProgressModalOpen] = useState(false);
   const [transferProgress, setTransferProgress] = useState<TransferProgress>({
     isProcessing: false,
@@ -78,6 +89,7 @@ const Dashboard: React.FC = () => {
     currentStep: 'idle',
     stepMessage: '',
   });
+  const [broadcastData, setBroadcastData] = useState<any>(null);
 
   const loadDashboardData = async () => {
     try {
@@ -114,51 +126,73 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle transfer start from QuickPaymentModal
-  const handleTransferStart = async (transferData: {
-    sender: string;
-    recipient: string;
-    amount: string;
-    token: TokenSymbol;
-    sequence_number: number;
-  }) => {
-    try {
-      // Start the transfer progress
-      setTransferProgress({
-        isProcessing: true,
-        successfulAuthorities: 0,
-        totalAuthorities: 3,
-        currentStep: 'processing',
-        stepMessage: 'Initiating transfer...',
-      });
+  useEffect(() => {
+    if (transferProgress.currentStep === 'processing') {
+      setPaymentModalOpen(false);
       setTransferProgressModalOpen(true);
-
-      // Simulate the API call
-      const data = await apiService.transfer({
-        sender: transferData.sender,
-        recipient: transferData.recipient,
-        amount: transferData.amount,
-        sequence_number: transferData.sequence_number,
-        token_address: SUPPORTED_TOKENS[transferData.token].address,
-      });
-
-      // Start simulating authority confirmations
-      simulateAuthorityConfirmations();
-    } catch (error) {
-      console.error('Transfer failed:', error);
-      setTransferProgress(prev => ({ ...prev, currentStep: 'failed' }));
+      simulateCerificateReceipt();
     }
-  };
+  }, [transferProgress]);
+
+  useEffect(() => {
+    if (broadcastData && broadcastData.success) {
+      setTransferProgress(prev => ({
+        ...prev,
+        currentStep: 'broadcasted',
+        stepMessage: 'Transaction broadcasted successfully!'
+      }));
+      simulateConfirmationReceipt();
+      // // Close the progress modal after a delay
+      // setTimeout(() => {
+      //   setTransferProgressModalOpen(false);
+      //   setTransferProgress({
+      //     isProcessing: false,
+      //     successfulAuthorities: 0,
+      //     totalAuthorities: 3,
+      //     currentStep: 'idle',
+      //     stepMessage: '',
+      //   });
+      // }, 2000);
+      
+    } else {
+      setTransferProgress(prev => ({
+        ...prev,
+        currentStep: 'failed',
+        stepMessage: 'Transaction failed to broadcast!'
+      }));
+    }
+  }, [broadcastData]);
 
   // Simulate authority confirmations
-  const simulateAuthorityConfirmations = () => {
+  const simulateCerificateReceipt = () => {
     let currentAuthority = 0;
     const interval = setInterval(() => {
       if (currentAuthority < transferProgress.totalAuthorities) {
         setTransferProgress(prev => ({
           ...prev,
-          successfulAuthorities: currentAuthority + 1,
-          stepMessage: `Authority ${currentAuthority + 1} confirmed...`,
+          successfulAuthorities: currentAuthority,
+          stepMessage: `Receiving certificate from Authority ${currentAuthority}...`,
+        }));
+        currentAuthority++;
+      } else {
+        clearInterval(interval);
+        setTransferProgress(prev => ({
+          ...prev,
+          currentStep: 'completed',
+          stepMessage: 'Receiving enough certificates!',
+        }));
+      }
+    }, 800);
+  };
+
+  const simulateConfirmationReceipt = () => {
+    let currentAuthority = 0;
+    const interval = setInterval(() => {
+      if (currentAuthority < broadcastData.authority_processing.length) {
+        setTransferProgress(prev => ({
+          ...prev,
+          successfulAuthorities: currentAuthority,
+          stepMessage: `Authority ${currentAuthority} confirmed...`,
         }));
         currentAuthority++;
       } else {
@@ -170,31 +204,22 @@ const Dashboard: React.FC = () => {
         }));
       }
     }, 800);
-  };
+  }
 
   // Handle broadcast confirmation
   const handleBroadcastConfirmation = async () => {
     try {
-      console.log('Broadcasting confirmation to network...');
+      const confirmationOrder: ConfirmationOrder = {
+        order_id: uuidv4(),
+        transfer_order: transferOrder,
+        authority_signatures: [],
+        timestamp: new Date().toISOString(),
+        status: 'pending',
+      };
       
-      setTransferProgress(prev => ({ 
-        ...prev, 
-        currentStep: 'broadcasted',
-        stepMessage: 'Transaction broadcasted successfully!'
-      }));
-      
-      // Close the progress modal after a delay
-      setTimeout(() => {
-        setTransferProgressModalOpen(false);
-        setTransferProgress({
-          isProcessing: false,
-          successfulAuthorities: 0,
-          totalAuthorities: 3,
-          currentStep: 'idle',
-          stepMessage: '',
-        });
-      }, 2000);
-      
+      const data = await apiService.confirm(confirmationOrder);
+      setBroadcastData(data);
+
     } catch (error) {
       console.error('Broadcast failed:', error);
     }
@@ -215,6 +240,27 @@ const Dashboard: React.FC = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h3" component="h1" gutterBottom>
+          Dashboard
+        </Typography>
+        </Box>
+        <Box display="flex" justifyContent="flex-end" mb={2}>
+          <IconButton 
+            onClick={loadDashboardData} 
+            disabled={loading}
+            size="small"
+            sx={{ 
+              color: '#00D2FF',
+              '&:hover': { backgroundColor: 'rgba(0, 210, 255, 0.1)' }
+            }}
+          >
+            <Refresh />
+          </IconButton>
+        </Box>
+      </Box>
+
       {loading && <LinearProgress sx={{ mb: 2 }} />}
 
       {/* All Dashboard Cards in Single Row */}
@@ -264,20 +310,9 @@ const Dashboard: React.FC = () => {
                       color={accountInfo.is_registered ? "success" : "warning"}
                       variant="outlined"
                     />
-                    <IconButton 
-                      onClick={loadDashboardData} 
-                      disabled={loading}
-                      size="small"
-                      sx={{ 
-                        color: '#00D2FF',
-                        '&:hover': { backgroundColor: 'rgba(0, 210, 255, 0.1)' }
-                      }}
-                    >
-                      <Refresh />
-                    </IconButton>
                   </Box>
                 </Box>
-
+                  
                 <Grid container spacing={2}>
                   {accountInfo.balances && Object.entries(accountInfo.balances).map(([symbol, balanceData]: [string, any]) => {
                     const tokenCfg = SUPPORTED_TOKENS[balanceData.token_symbol as TokenSymbol];
@@ -454,15 +489,9 @@ const Dashboard: React.FC = () => {
                     </Button>
                     <Button
                       variant="outlined"
-                      startIcon={<Receipt />}
-                      fullWidth
-                    >
-                      View Certificates
-                    </Button>
-                    <Button
-                      variant="outlined"
                       startIcon={<AccountBalanceWallet />}
                       fullWidth
+                      onClick={() => (window.location.href = '/transactions')}
                     >
                       Transaction History
                     </Button>
@@ -479,7 +508,9 @@ const Dashboard: React.FC = () => {
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         shards={shards}
-        onTransferStart={handleTransferStart}
+        transferOrder={transferOrder}
+        setTransferOrder={setTransferOrder}
+        setTransferProgress={setTransferProgress}
       />
       
       {/* Deposit Modal */}
