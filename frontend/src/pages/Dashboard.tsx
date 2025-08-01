@@ -41,22 +41,12 @@ interface DashboardStats {
 
 const Dashboard: React.FC = () => {
 
-  /* ------------------------------------------------------------------ */
-  /* Wallet balances (MeshPay + on-chain)                               */
-  /* ------------------------------------------------------------------ */
   const { 
     isConnected, 
     accountInfo,
     fetchData,
     address,
   } = useWalletContext();
-
-  // Refresh data when account changes
-  useEffect(() => {
-    if (isConnected && address) {
-      fetchData();
-    }
-  }, [isConnected, address]);
 
   const [stats, setStats] = useState<DashboardStats>({
     onlineAuthorities: 0,
@@ -94,7 +84,7 @@ const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      fetchData();
+      await fetchData();
       const [shardsData, authoritiesData, metricsData] = await Promise.all([
         apiService.getShards(),
         apiService.getAuthorities(),
@@ -119,6 +109,13 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Refresh data when account changes
+  useEffect(() => {
+    if (isConnected && address) {
+      loadDashboardData();
+    }
+  }, [isConnected, address]);
+    
   useEffect(() => {
     loadDashboardData();
     // Refresh every 30 seconds

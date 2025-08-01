@@ -119,6 +119,17 @@ class AccountState(BaseApiModel):
     last_updated: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
 
+class AuthorityInfo(BaseApiModel):
+    """Information about a MeshPay authority."""
+    name: str = Field(..., description="Authority name")
+    address: Address = Field(..., description="Network address")
+    position: Optional[Position] = Field(None, description="Geographic position")
+    status: AuthorityStatus = Field(AuthorityStatus.UNKNOWN, description="Current status")
+    committee_members: Set[str] = Field(default_factory=set, description="Committee member names")
+    last_heartbeat: datetime = Field(default_factory=datetime.utcnow, description="Last heartbeat")
+    performance_metrics: Dict[str, Union[int, float]] = Field(default_factory=dict, description="Performance metrics")
+
+
 class ShardInfo(BaseApiModel):
     """Shard information for an authority."""
     shard_id: str = Field(..., description="Shard identifier")
@@ -129,16 +140,6 @@ class ShardInfo(BaseApiModel):
     authorities: List[AuthorityInfo] = Field(default_factory=list, description="Authorities in shard")
 
 
-class AuthorityInfo(BaseApiModel):
-    """Information about a MeshPay authority."""
-    name: str = Field(..., description="Authority name")
-    address: Address = Field(..., description="Network address")
-    position: Optional[Position] = Field(None, description="Geographic position")
-    status: AuthorityStatus = Field(AuthorityStatus.UNKNOWN, description="Current status")
-    shards: List[ShardInfo] = Field(default_factory=list, description="Managed shards")
-    committee_members: Set[str] = Field(default_factory=set, description="Committee member names")
-    last_heartbeat: datetime = Field(default_factory=datetime.utcnow, description="Last heartbeat")
-    performance_metrics: Dict[str, Union[int, float]] = Field(default_factory=dict, description="Performance metrics")
 
 
 class ClientState(BaseApiModel):
@@ -191,3 +192,26 @@ class NetworkMetrics(BaseApiModel):
     average_confirmation_time: float = Field(0.0, description="Average confirmation time in seconds")
     network_latency: float = Field(0.0, description="Average network latency in milliseconds")
     last_calculated: datetime = Field(default_factory=datetime.utcnow, description="Last calculation timestamp") 
+
+class TokenBalance(BaseApiModel):
+    """Token balance information."""
+    token_symbol: str
+    token_address: str
+    wallet_balance: float
+    meshpay_balance: float
+    total_balance: float
+    decimals: int
+
+class AccountInfo(BaseApiModel):
+    """Account information from smart contract."""
+    address: str
+    balances: Dict[str, TokenBalance]
+    is_registered: bool
+    registration_time: int
+    last_redeemed_sequence: int
+
+class ContractStats(BaseApiModel):
+    """Overall contract statistics."""
+    total_accounts: int
+    total_native_balance: str
+    total_token_balances: Dict[str, str]

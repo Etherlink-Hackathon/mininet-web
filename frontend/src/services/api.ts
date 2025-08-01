@@ -85,7 +85,7 @@ class ApiService {
     endpoint: string,
     cacheKey: string,
     ttl: number,
-    fallbackData: T,
+    fallbackData?: T,
     params?: Record<string, any>
   ): Promise<T> {
     try {
@@ -101,8 +101,10 @@ class ApiService {
       if (cachedData !== null) {
         return cachedData;
       }
-      // Return fallback data if no cache available
-      return fallbackData;
+      if (fallbackData) {
+        return fallbackData;
+      }
+      throw error;
     }
   }
 
@@ -163,7 +165,6 @@ class ApiService {
    */
   async confirm(payload: ConfirmationOrder): Promise<any> {
     try {
-
       const { data } = await this.client.post('/confirm', payload);
       return data;
     } catch (error) {
@@ -253,7 +254,6 @@ class ApiService {
       `/accounts/${address}`,
       'walletAccount',
       CACHE_TTL.WALLET_BALANCE,
-      FALLBACK_DATA.walletAccount
     );
   }
 

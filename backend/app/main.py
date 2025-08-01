@@ -41,7 +41,6 @@ app.add_middleware(
 
 # Include the main API router with /api prefix
 app.include_router(api_router, prefix="/api")
-
 # ---------------------------------------------------------------------------
 # Application lifecycle events
 # ---------------------------------------------------------------------------

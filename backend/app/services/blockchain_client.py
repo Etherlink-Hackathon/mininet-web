@@ -7,11 +7,12 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 from decimal import Decimal
-from dataclasses import dataclass
+
 
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 from eth_account import Account
+from ..models.base import AccountInfo, TokenBalance, ContractStats
 
 _ABI_DIR: Path = Path(__file__).resolve().parent.parent / "abis"
 
@@ -45,32 +46,6 @@ ERC20ABI: List[Dict[str, Any]] = _load_abi("ERC20.json")
 
 from ..core.config import settings, SUPPORTED_TOKENS
 
-logger = logging.getLogger(__name__)
-
-@dataclass
-class AccountInfo:
-    """Account information from smart contract."""
-    address: str
-    is_registered: bool
-    registration_time: int
-    last_redeemed_sequence: int
-
-@dataclass
-class TokenBalance:
-    """Token balance information."""
-    token_symbol: str
-    token_address: str
-    wallet_balance: str  # In human-readable format
-    meshpay_balance: str  # In human-readable format
-    total_balance: str
-    decimals: int
-
-@dataclass
-class ContractStats:
-    """Overall contract statistics."""
-    total_accounts: int
-    total_native_balance: str
-    total_token_balances: Dict[str, str]
 
 class BlockchainClient:
     """Client for interacting with Etherlink blockchain and FastPay contracts."""
@@ -80,8 +55,9 @@ class BlockchainClient:
         self.w3: Optional[Web3] = None
         self.meshpay_contract = None
         self.account = None
+        self.logger = logging.getLogger(__name__)
         self._initialize_connection()
-    
+
     def _initialize_connection(self) -> None:
         """Initialize Web3 connection to Etherlink."""
         try:
@@ -95,7 +71,7 @@ class BlockchainClient:
             if not self.w3.is_connected():
                 raise ConnectionError(f"Failed to connect to {settings.rpc_url}")
             
-            logger.info(f"Connected to blockchain: {settings.chain_name} (Chain ID: {settings.chain_id})")
+            self.logger.info(f"Connected to blockchain: {settings.chain_name} (Chain ID: {settings.chain_id})")
             
             # Initialize FastPay contract if address is configured
             if settings.meshpay_contract_address:
@@ -103,21 +79,21 @@ class BlockchainClient:
                     address=Web3.to_checksum_address(settings.meshpay_contract_address),
                     abi=MeshPayABI
                 )
-                logger.info(f"FastPay contract initialized at {settings.meshpay_contract_address}")
+                self.logger.info(f"FastPay contract initialized at {settings.meshpay_contract_address}")
             
             # Initialize backend account if private key is provided
             if settings.backend_private_key:
                 self.account = Account.from_key(settings.backend_private_key)
-                logger.info(f"Backend account initialized: {self.account.address}")
+                self.logger.info(f"Backend account initialized: {self.account.address}")
                 
         except Exception as e:
-            logger.error(f"Failed to initialize blockchain connection: {e}")
+            self.logger.error(f"Failed to initialize blockchain connection: {e}")
             self.w3 = None
     
-    async def get_account_info(self, address: str) -> Optional[AccountInfo]:
+    async def get_wallet_account(self, address: str) -> Optional[AccountInfo]:
         """Get account information from FastPay contract."""
         if not self.meshpay_contract:
-            logger.error("FastPay contract not initialized")
+            self.logger.error("FastPay contract not initialized")
             return None
         
         try:
@@ -126,15 +102,17 @@ class BlockchainClient:
             # Get account info from contract
             account_data = self.meshpay_contract.functions.getAccountInfo(address).call()
             
+            balances = await self.get_account_balances(address)
             return AccountInfo(
                 address=address,
                 is_registered=account_data[0],
                 registration_time=account_data[1],
-                last_redeemed_sequence=account_data[2]
+                last_redeemed_sequence=account_data[2],
+                balances=balances
             )
             
         except Exception as e:
-            logger.error(f"Failed to get account info for {address}: {e}")
+            self.logger.error(f"Failed to get account info for {address}: {e}")
             return None
     
     async def get_onchain_balance(self, address: str, token_symbol: str, token_config: Dict[str, Any]) -> float:
@@ -224,7 +202,7 @@ class BlockchainClient:
         except Exception as e:
             self.logger.error(f"Failed to get MeshPay balance for {account_address} token {token_address}: {e}")
             return 0.0
-            
+
     async def get_account_balances(self, address: str) -> Dict[str, TokenBalance]:
         """Get all token balances for an account.
         
@@ -281,7 +259,7 @@ class BlockchainClient:
     async def get_contract_stats(self) -> Optional[ContractStats]:
         """Get overall contract statistics."""
         if not self.meshpay_contract:
-            logger.error("FastPay contract not initialized")
+            self.logger.error("FastPay contract not initialized")
             return None
         
         try:
@@ -312,7 +290,7 @@ class BlockchainClient:
             )
             
         except Exception as e:
-            logger.error(f"Failed to get contract stats: {e}")
+            self.logger.error(f"Failed to get contract stats: {e}")
             return None
     
     async def is_account_registered(self, address: str) -> bool:
@@ -324,7 +302,7 @@ class BlockchainClient:
             address = Web3.balanceOf(address)
             return self.meshpay_contract.functions.isAccountRegistered(address).call()
         except Exception as e:
-            logger.error(f"Failed to check registration for {address}: {e}")
+            self.logger.error(f"Failed to check registration for {address}: {e}")
             return False
     
     async def get_recent_events(self, event_name: str, from_block: int = None, limit: int = 100) -> List[Dict]:
@@ -359,16 +337,16 @@ class BlockchainClient:
             return event_list
             
         except Exception as e:
-            logger.error(f"Failed to get {event_name} events: {e}")
+            self.logger.error(f"Failed to get {event_name} events: {e}")
             return []
     
-    def _wei_to_human(self, wei_amount: int, decimals: int) -> str:
+    def _wei_to_human(self, wei_amount: int, decimals: int) -> float:
         """Convert wei amount to human-readable format."""
-        return str(Decimal(wei_amount) / Decimal(10 ** decimals))
+        return float(Decimal(wei_amount) / Decimal(10 ** decimals))
     
     def _human_to_wei(self, human_amount: Union[str, Decimal], decimals: int) -> int:
         """Convert human-readable amount to wei."""
-        return int(Decimal(human_amount) * Decimal(10 ** decimals))
+        return float(Decimal(human_amount) * Decimal(10 ** decimals))
     
     async def health_check(self) -> Dict[str, Any]:
         """Check blockchain connection health."""
@@ -394,7 +372,7 @@ class BlockchainClient:
                     
         except Exception as e:
             health_status['error'] = str(e)
-            logger.error(f"Blockchain health check failed: {e}")
+            self.logger.error(f"Blockchain health check failed: {e}")
         
         return health_status
 

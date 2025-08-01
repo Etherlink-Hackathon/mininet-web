@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAccount } from 'wagmi';
-import { useWallets } from '@privy-io/react-auth';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { type Address } from 'viem';
 import { MESHPAY_CONTRACT, SUPPORTED_TOKENS, type TokenSymbol } from '../config/contracts';
 import {
@@ -8,6 +8,7 @@ import {
   useDepositFlow,
 } from '../services/meshpay';
 import { apiService } from '../services/api';
+import { serverService } from '../services/server';
 import { cacheService } from '../services/cacheService';
 import { AccountInfo, TokenBalance } from '../types/api';
 
@@ -107,15 +108,42 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // --- Data Fetching and Transformation ---
   const fetchData = async () => {
+    console.log('fetchData', isConnected, address);
     if (!isConnected || !address) return;
     
     setLoading(true);
     setError(null);
     
     try {
-      const accountResponse = await apiService.getWalletAccount(address);
-      const accountData: AccountInfo = accountResponse;
-
+      let accountData: AccountInfo;
+      
+      try {
+        // Try apiService first
+        const accountResponse = await apiService.getWalletAccount(address);
+        console.log('Account data:', accountResponse);
+        accountData = accountResponse;
+      } catch (error) {
+        console.warn('apiService.getWalletAccount failed, trying serverService:', error);
+        
+        // Fallback to serverService
+        try {
+          const serverAccountResponse = await serverService.getWalletAccount(address);
+          
+          // Convert server response to AccountInfo format
+          accountData = {
+            address: serverAccountResponse.address,
+            balances: serverAccountResponse.balances, // Server doesn't return balances, will need to fetch separately
+            sequence_number: 0, // Default sequence number
+            is_registered: serverAccountResponse.is_registered,
+            registration_time: serverAccountResponse.registration_time,
+            last_redeemed_sequence: serverAccountResponse.last_redeemed_sequence,
+          };
+        } catch (serverError) {
+          console.error('Both apiService and serverService failed:', serverError);
+          throw new Error('Failed to fetch account data from both API and server services');
+        }
+      }
+      
       setAccountInfo({
         address: accountData.address,
         balances: accountData.balances,

@@ -1,12 +1,6 @@
 import axios from 'axios';
+import { AccountInfo } from '../types/api';
 
-// Types for wallet responses
-export interface AccountInfo {
-  address: string;
-  is_registered: boolean;
-  registration_time: number;
-  last_redeemed_sequence: number;
-}
 
 export interface TokenBalance {
   token_symbol: string;
@@ -54,8 +48,8 @@ export interface HealthCheck {
 }
 
 // Create axios instance for wallet API calls
-const walletClient = axios.create({
-  baseURL: '/api',
+const serverClient = axios.create({
+  baseURL: import.meta.env.VITE_SERVER_BASE_URL,
   timeout: 30_000,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -69,28 +63,13 @@ export const serverService = {
    * @param address - Ethereum address to query
    * @returns Account information including registration status
    */
-  async getAccountInfo(address: string): Promise<AccountInfo> {
+  async getWalletAccount(address: string): Promise<AccountInfo> {
     try {
-      const response = await walletClient.get(`/wallet/account/${address}`);
+      const response = await serverClient.get(`/api/wallet/${address}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get account info:', error);
       throw new Error(`Failed to get account info: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  },
-
-  /**
-   * Get all token balances for a wallet address
-   * @param address - Ethereum address to query
-   * @returns Complete balance information for all supported tokens
-   */
-  async getWalletBalances(address: string): Promise<WalletBalances> {
-    try {
-      const response = await walletClient.get(`/wallet/balances/${address}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get wallet balances:', error);
-      throw new Error(`Failed to get wallet balances: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 
@@ -101,7 +80,7 @@ export const serverService = {
    */
   async getRegistrationStatus(address: string): Promise<RegistrationStatus> {
     try {
-      const response = await walletClient.get(`/wallet/registration-status/${address}`);
+      const response = await serverClient.get(`/wallet/registration-status/${address}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get registration status:', error);
@@ -115,7 +94,7 @@ export const serverService = {
    */
   async getContractStats(): Promise<ContractStats> {
     try {
-      const response = await walletClient.get('/wallet/contract-stats');
+      const response = await serverClient.get('/wallet/contract-stats');
       return response.data;
     } catch (error) {
       console.error('Failed to get contract stats:', error);
@@ -142,7 +121,7 @@ export const serverService = {
         ...(fromBlock && { from_block: fromBlock.toString() })
       });
       
-      const response = await walletClient.get(`/wallet/recent-events?${params}`);
+      const response = await serverClient.get(`/wallet/recent-events?${params}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get recent events:', error);
@@ -156,7 +135,7 @@ export const serverService = {
    */
   async getHealthCheck(): Promise<HealthCheck> {
     try {
-      const response = await walletClient.get('/wallet/health');
+      const response = await serverClient.get('/wallet/health');
       return response.data;
     } catch (error) {
       console.error('Failed to get health check:', error);
@@ -170,7 +149,7 @@ export const serverService = {
    */
   async getWalletInfo(): Promise<Record<string, any>> {
     try {
-      const response = await walletClient.get('/wallet/');
+      const response = await serverClient.get('/wallet/');
       return response.data;
     } catch (error) {
       console.error('Failed to get wallet info:', error);
@@ -184,7 +163,7 @@ export const serverService = {
    */
   async getLegacyBalance(): Promise<{ balance: number; token: string; total_accounts?: number }> {
     try {
-      const response = await walletClient.get('/wallet/balance');
+      const response = await serverClient.get('/wallet/balance');
       return response.data;
     } catch (error) {
       console.error('Failed to get legacy balance:', error);
