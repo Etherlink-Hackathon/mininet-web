@@ -13,13 +13,16 @@ describe("MeshPayMVP", function () {
   let account1: SignerWithAddress;
   let account2: SignerWithAddress;
   let account3: SignerWithAddress;
+  let authority1: SignerWithAddress;
+  let authority2: SignerWithAddress;
+  let nonAuthority: SignerWithAddress;
 
   const INITIAL_BALANCE = ethers.parseEther("1000");
   const INITIAL_ETH = ethers.parseEther("1000");
 
   beforeEach(async function () {
     // Get signers
-    [deployer, account1, account2, account3] = await ethers.getSigners();
+    [deployer, account1, account2, account3, authority1, authority2, nonAuthority] = await ethers.getSigners();
 
     // Deploy contracts
     const MeshPayMVPFactory = await ethers.getContractFactory("MeshPayMVP");
@@ -317,6 +320,285 @@ describe("MeshPayMVP", function () {
       const receipt = await tx.wait();
       
       expect(receipt!.gasUsed).to.be.lessThan(500000);
+    });
+  });
+
+  describe("Authority Management", function () {
+    it("should allow owner to add authorities", async function () {
+      await expect(fastPay.connect(deployer).addAuthority(authority1.address, "Authority1"))
+        .to.emit(fastPay, "AuthorityAdded")
+        .withArgs(authority1.address, "Authority1", anyValue);
+
+      expect(await fastPay.isAuthority(authority1.address)).to.be.true;
+    });
+
+    it("should prevent non-owner from adding authorities", async function () {
+      await expect(fastPay.connect(account1).addAuthority(authority1.address, "Authority1"))
+        .to.be.revertedWithCustomError(fastPay, "OnlyOwner");
+    });
+
+    it("should prevent adding duplicate authorities", async function () {
+      await fastPay.connect(deployer).addAuthority(authority1.address, "Authority1");
+      
+      await expect(fastPay.connect(deployer).addAuthority(authority1.address, "Authority1"))
+        .to.be.revertedWithCustomError(fastPay, "AuthorityAlreadyExists");
+    });
+
+    it("should allow owner to remove authorities", async function () {
+      await fastPay.connect(deployer).addAuthority(authority1.address, "Authority1");
+      
+      await expect(fastPay.connect(deployer).removeAuthority(authority1.address))
+        .to.emit(fastPay, "AuthorityRemoved")
+        .withArgs(authority1.address, anyValue);
+
+      expect(await fastPay.isAuthority(authority1.address)).to.be.false;
+    });
+
+    it("should prevent removing non-existent authorities", async function () {
+      await expect(fastPay.connect(deployer).removeAuthority(authority1.address))
+        .to.be.revertedWithCustomError(fastPay, "AuthorityNotFound");
+    });
+
+    it("should return correct authority information", async function () {
+      await fastPay.connect(deployer).addAuthority(authority1.address, "Authority1");
+      
+      const [name, addr, isActive, registrationTime, lastActivity] = await fastPay.getAuthorityInfo(authority1.address);
+      
+      expect(name).to.equal("Authority1");
+      expect(addr).to.equal(authority1.address);
+      expect(isActive).to.be.true;
+      expect(registrationTime).to.be.gt(0);
+      expect(lastActivity).to.be.gt(0);
+    });
+
+    it("should return all authority addresses", async function () {
+      await fastPay.connect(deployer).addAuthority(authority1.address, "Authority1");
+      await fastPay.connect(deployer).addAuthority(authority2.address, "Authority2");
+      
+      const addresses = await fastPay.getAuthorityAddresses();
+      expect(addresses.length).to.equal(2);
+      expect(addresses).to.include(authority1.address);
+      expect(addresses).to.include(authority2.address);
+    });
+
+    it("should correctly identify authorities", async function () {
+      expect(await fastPay.isAuthority(authority1.address)).to.be.false;
+      
+      await fastPay.connect(deployer).addAuthority(authority1.address, "Authority1");
+      expect(await fastPay.isAuthority(authority1.address)).to.be.true;
+      
+      await fastPay.connect(deployer).removeAuthority(authority1.address);
+      expect(await fastPay.isAuthority(authority1.address)).to.be.false;
+    });
+  });
+
+  describe("Balance Update from Confirmation", function () {
+    beforeEach(async function () {
+      // Add authorities
+      await fastPay.connect(deployer).addAuthority(authority1.address, "Authority1");
+      await fastPay.connect(deployer).addAuthority(authority2.address, "Authority2");
+      
+      // Fund accounts
+      await token.connect(account1).approve(await fastPay.getAddress(), INITIAL_BALANCE);
+      await fastPay.connect(account1).handleFundingTransaction(await token.getAddress(), ethers.parseEther("500"));
+    });
+
+    it("should allow authorities to update balances", async function () {
+      const transferAmount = ethers.parseEther("100");
+      const sequenceNumber = 1;
+      
+      const confirmationOrder = {
+        transferOrder: {
+          orderId: "test-order-123",
+          sender: account1.address,
+          recipient: account2.address,
+          amount: transferAmount,
+          token: await token.getAddress(),
+          sequenceNumber: sequenceNumber,
+          timestamp: Math.floor(Date.now() / 1000),
+          signature: "0x"
+        },
+        authoritySignatures: ["0x", "0x"]
+      };
+
+      await expect(fastPay.connect(authority1).updateBalanceFromConfirmation(confirmationOrder))
+        .to.emit(fastPay, "BalanceUpdated")
+        .withArgs(
+          account1.address,
+          account2.address,
+          await token.getAddress(),
+          transferAmount,
+          sequenceNumber,
+          "test-order-123"
+        );
+
+      expect(await fastPay.getAccountBalance(account1.address, await token.getAddress()))
+        .to.equal(ethers.parseEther("400")); // 500 - 100
+      expect(await fastPay.getAccountBalance(account2.address, await token.getAddress()))
+        .to.equal(transferAmount); // 0 + 100
+    });
+
+    it("should prevent non-authorities from updating balances", async function () {
+      const confirmationOrder = {
+        transferOrder: {
+          orderId: "test-order-123",
+          sender: account1.address,
+          recipient: account2.address,
+          amount: ethers.parseEther("100"),
+          token: await token.getAddress(),
+          sequenceNumber: 1,
+          timestamp: Math.floor(Date.now() / 1000),
+          signature: "0x"
+        },
+        authoritySignatures: ["0x"]
+      };
+
+      await expect(fastPay.connect(nonAuthority).updateBalanceFromConfirmation(confirmationOrder))
+        .to.be.revertedWithCustomError(fastPay, "NotAuthority");
+    });
+
+    it("should prevent transfers with insufficient balance", async function () {
+      const confirmationOrder = {
+        transferOrder: {
+          orderId: "test-order-123",
+          sender: account1.address,
+          recipient: account2.address,
+          amount: ethers.parseEther("1000"), // More than available balance
+          token: await token.getAddress(),
+          sequenceNumber: 1,
+          timestamp: Math.floor(Date.now() / 1000),
+          signature: "0x"
+        },
+        authoritySignatures: ["0x"]
+      };
+
+      await expect(fastPay.connect(authority1).updateBalanceFromConfirmation(confirmationOrder))
+        .to.be.revertedWithCustomError(fastPay, "InsufficientBalance");
+    });
+
+    it("should prevent transfers with zero amount", async function () {
+      const confirmationOrder = {
+        transferOrder: {
+          orderId: "test-order-123",
+          sender: account1.address,
+          recipient: account2.address,
+          amount: 0,
+          token: await token.getAddress(),
+          sequenceNumber: 1,
+          timestamp: Math.floor(Date.now() / 1000),
+          signature: "0x"
+        },
+        authoritySignatures: ["0x"]
+      };
+
+      await expect(fastPay.connect(authority1).updateBalanceFromConfirmation(confirmationOrder))
+        .to.be.revertedWithCustomError(fastPay, "InvalidAmount");
+    });
+
+    it("should prevent transfers with invalid addresses", async function () {
+      const confirmationOrder = {
+        transferOrder: {
+          orderId: "test-order-123",
+          sender: ethers.ZeroAddress,
+          recipient: account2.address,
+          amount: ethers.parseEther("100"),
+          token: await token.getAddress(),
+          sequenceNumber: 1,
+          timestamp: Math.floor(Date.now() / 1000),
+          signature: "0x"
+        },
+        authoritySignatures: ["0x"]
+      };
+
+      await expect(fastPay.connect(authority1).updateBalanceFromConfirmation(confirmationOrder))
+        .to.be.revertedWithCustomError(fastPay, "InvalidAddress");
+    });
+
+    it("should automatically register accounts if not registered", async function () {
+      const transferAmount = ethers.parseEther("100");
+      
+      const confirmationOrder = {
+        transferOrder: {
+          orderId: "test-order-123",
+          sender: account1.address,
+          recipient: account3.address, // Not registered yet
+          amount: transferAmount,
+          token: await token.getAddress(),
+          sequenceNumber: 1,
+          timestamp: Math.floor(Date.now() / 1000),
+          signature: "0x"
+        },
+        authoritySignatures: ["0x"]
+      };
+
+      await fastPay.connect(authority1).updateBalanceFromConfirmation(confirmationOrder);
+
+      // Check that account3 is now registered and has balance
+      const [isRegistered] = await fastPay.getAccountInfo(account3.address);
+      expect(isRegistered).to.be.true;
+      expect(await fastPay.getAccountBalance(account3.address, await token.getAddress()))
+        .to.equal(transferAmount);
+    });
+
+    it("should update authority activity timestamp", async function () {
+      const confirmationOrder = {
+        transferOrder: {
+          orderId: "test-order-123",
+          sender: account1.address,
+          recipient: account2.address,
+          amount: ethers.parseEther("100"),
+          token: await token.getAddress(),
+          sequenceNumber: 1,
+          timestamp: Math.floor(Date.now() / 1000),
+          signature: "0x"
+        },
+        authoritySignatures: ["0x"]
+      };
+
+      const beforeActivity = (await fastPay.getAuthorityInfo(authority1.address))[4]; // lastActivity
+      
+      await fastPay.connect(authority1).updateBalanceFromConfirmation(confirmationOrder);
+      
+      const afterActivity = (await fastPay.getAuthorityInfo(authority1.address))[4]; // lastActivity
+      expect(afterActivity).to.be.gt(beforeActivity);
+    });
+
+    it("should handle native token transfers", async function () {
+      // Fund with native XTZ first
+      await fastPay.connect(account1).handleNativeFundingTransaction({ value: ethers.parseEther("500") });
+      
+      const transferAmount = ethers.parseEther("100");
+      const nativeToken = await fastPay.NATIVE_TOKEN();
+      
+      const confirmationOrder = {
+        transferOrder: {
+          orderId: "test-order-123",
+          sender: account1.address,
+          recipient: account2.address,
+          amount: transferAmount,
+          token: nativeToken,
+          sequenceNumber: 1,
+          timestamp: Math.floor(Date.now() / 1000),
+          signature: "0x"
+        },
+        authoritySignatures: ["0x"]
+      };
+
+      await expect(fastPay.connect(authority1).updateBalanceFromConfirmation(confirmationOrder))
+        .to.emit(fastPay, "BalanceUpdated")
+        .withArgs(
+          account1.address,
+          account2.address,
+          nativeToken,
+          transferAmount,
+          1,
+          "test-order-123"
+        );
+
+      expect(await fastPay.getAccountBalance(account1.address, nativeToken))
+        .to.equal(ethers.parseEther("400")); // 500 - 100
+      expect(await fastPay.getAccountBalance(account2.address, nativeToken))
+        .to.equal(transferAmount); // 0 + 100
     });
   });
 }); 

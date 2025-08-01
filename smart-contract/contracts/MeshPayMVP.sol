@@ -52,9 +52,41 @@ contract MeshPayMVP is ReentrancyGuard {
         bytes signature; // For future committee validation
     }
 
+    /// @dev Authority information
+    struct Authority {
+        string name;
+        address authorityAddress;
+        bool isActive;
+        uint256 registrationTime;
+        uint256 lastActivity;
+    }
+
+    /// @dev Transfer order for off-chain MeshPay payments
+    struct TransferOrder {
+        string orderId;
+        address sender;
+        address recipient;
+        uint256 amount;
+        address token;
+        uint256 sequenceNumber;
+        uint256 timestamp;
+        string signature;
+    }
+
+    /// @dev Confirmation order from authorities
+    struct ConfirmationOrder {
+        TransferOrder transferOrder;
+        string[] authoritySignatures;
+    }
+
     /// @dev State variables
     mapping(address => AccountOnchainState) private accounts;
     mapping(bytes32 => bool) private processedRedemptions;
+    
+    /// Authority management
+    mapping(address => Authority) private authorities;
+    address[] private authorityAddresses;
+    address public owner;
     
     /// The latest transaction index included in the blockchain
     uint256 public lastTransactionIndex;
@@ -78,6 +110,19 @@ contract MeshPayMVP is ReentrancyGuard {
         bytes signature
     );
     event TransferCertificateCreated(address indexed sender, address indexed recipient, bytes32 certificateHash);
+    
+    /// @dev Authority management events
+    event AuthorityAdded(address indexed authority, string name, uint256 timestamp);
+    event AuthorityRemoved(address indexed authority, uint256 timestamp);
+    event AuthorityDeactivated(address indexed authority, uint256 timestamp);
+    event BalanceUpdated(
+        address indexed sender,
+        address indexed recipient,
+        address indexed token,
+        uint256 amount,
+        uint256 sequenceNumber,
+        string orderId
+    );
 
     /// @dev Custom errors
     error AccountNotRegistered();
@@ -88,6 +133,11 @@ contract MeshPayMVP is ReentrancyGuard {
     error CertificateAlreadyRedeemed();
     error InvalidSequenceNumber();
     error InvalidTransferCertificate();
+    error NotAuthority();
+    error AuthorityNotActive();
+    error OnlyOwner();
+    error AuthorityAlreadyExists();
+    error AuthorityNotFound();
 
     /// @dev Modifiers
     modifier onlyRegisteredAccount() {
@@ -103,6 +153,26 @@ contract MeshPayMVP is ReentrancyGuard {
     modifier validAddress(address addr) {
         if (addr == address(0)) revert InvalidAddress();
         _;
+    }
+
+    modifier validTokenAddress(address addr) {
+        // Allow NATIVE_TOKEN (address(0)) as a valid token address
+        _;
+    }
+
+    modifier onlyAuthority() {
+        if (!authorities[msg.sender].isActive) revert NotAuthority();
+        _;
+    }
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert OnlyOwner();
+        _;
+    }
+
+    /// @dev Constructor
+    constructor() {
+        owner = msg.sender;
     }
 
     /**
@@ -304,6 +374,145 @@ contract MeshPayMVP is ReentrancyGuard {
      */
     function getRegisteredAccounts() external view returns (address[] memory) {
         return registeredAccounts;
+    }
+
+    /**
+     * @dev Authority management functions
+     * @dev Add a new authority (only owner can call)
+     * @param authorityAddress The address of the authority
+     * @param name The name of the authority
+     */
+    function addAuthority(address authorityAddress, string memory name) 
+        external 
+        onlyOwner 
+        validAddress(authorityAddress) 
+    {
+        if (authorities[authorityAddress].isActive) revert AuthorityAlreadyExists();
+        
+        authorities[authorityAddress] = Authority({
+            name: name,
+            authorityAddress: authorityAddress,
+            isActive: true,
+            registrationTime: block.timestamp,
+            lastActivity: block.timestamp
+        });
+        
+        authorityAddresses.push(authorityAddress);
+        
+        emit AuthorityAdded(authorityAddress, name, block.timestamp);
+    }
+
+    /**
+     * @dev Remove an authority (only owner can call)
+     * @param authorityAddress The address of the authority to remove
+     */
+    function removeAuthority(address authorityAddress) 
+        external 
+        onlyOwner 
+        validAddress(authorityAddress) 
+    {
+        if (!authorities[authorityAddress].isActive) revert AuthorityNotFound();
+        
+        authorities[authorityAddress].isActive = false;
+        
+        emit AuthorityRemoved(authorityAddress, block.timestamp);
+    }
+
+    /**
+     * @dev Get authority information
+     * @param authorityAddress The address of the authority
+     * @return name The name of the authority
+     * @return authorityAddr The address of the authority
+     * @return isActive Whether the authority is active
+     * @return registrationTime When the authority was registered
+     * @return lastActivity Last activity timestamp
+     */
+    function getAuthorityInfo(address authorityAddress) 
+        external 
+        view 
+        returns (
+            string memory name,
+            address authorityAddr,
+            bool isActive,
+            uint256 registrationTime,
+            uint256 lastActivity
+        ) 
+    {
+        Authority storage auth = authorities[authorityAddress];
+        return (
+            auth.name,
+            auth.authorityAddress,
+            auth.isActive,
+            auth.registrationTime,
+            auth.lastActivity
+        );
+    }
+
+    /**
+     * @dev Get all authority addresses
+     * @return Array of all authority addresses
+     */
+    function getAuthorityAddresses() external view returns (address[] memory) {
+        return authorityAddresses;
+    }
+
+    /**
+     * @dev Check if an address is an active authority
+     * @param authorityAddress The address to check
+     * @return bool Whether the address is an active authority
+     */
+    function isAuthority(address authorityAddress) external view returns (bool) {
+        return authorities[authorityAddress].isActive;
+    }
+
+    /**
+     * @dev Update account balances based on confirmation order (only authorities can call)
+     * @param confirmationOrder The confirmation order containing transfer details
+     */
+    function updateBalanceFromConfirmation(ConfirmationOrder calldata confirmationOrder) 
+        external 
+        onlyAuthority 
+        nonReentrant 
+    {
+        TransferOrder memory transferOrder = confirmationOrder.transferOrder;
+        
+        // Validate transfer order
+        if (transferOrder.sender == address(0)) revert InvalidAddress();
+        if (transferOrder.recipient == address(0)) revert InvalidAddress();
+        if (transferOrder.amount == 0) revert InvalidAmount();
+        // Allow NATIVE_TOKEN (address(0)) as a valid token address
+        
+        // Check if sender is registered
+        if (!accounts[transferOrder.sender].registered) {
+            _registerIfNeeded(transferOrder.sender);
+        }
+        
+        // Check if recipient is registered
+        if (!accounts[transferOrder.recipient].registered) {
+            _registerIfNeeded(transferOrder.recipient);
+        }
+        
+        // Check if sender has sufficient balance
+        if (accounts[transferOrder.sender].balances[transferOrder.token] < transferOrder.amount) {
+            revert InsufficientBalance();
+        }
+        
+        // Update balances
+        accounts[transferOrder.sender].balances[transferOrder.token] -= transferOrder.amount;
+        accounts[transferOrder.recipient].balances[transferOrder.token] += transferOrder.amount;
+        
+        // Update authority activity
+        authorities[msg.sender].lastActivity = block.timestamp;
+        
+        // Emit event
+        emit BalanceUpdated(
+            transferOrder.sender,
+            transferOrder.recipient,
+            transferOrder.token,
+            transferOrder.amount,
+            transferOrder.sequenceNumber,
+            transferOrder.orderId
+        );
     }
 
     /**

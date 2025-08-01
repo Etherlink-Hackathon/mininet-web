@@ -1,25 +1,33 @@
-# Mininet-WiFi MeshPay Backend
+# Mininet-Web Backend
 
-> **Single-file, zero-dependency* FastAPI service that bridges the React web UI to MeshPay authorities running in an IEEE 802.11s mesh network.**
+> **FastAPI service that bridges the React web UI to Etherlink Blockchain for offline payment operations.**
 >
-> *Zero-dependency beyond `httpx`, `fastapi`, and `uvicorn` – see `requirements.txt` for full list.
+> Provides REST API endpoints for wallet management, transaction processing, and blockchain state queries.
 
 ---
 
-## ✨ What’s inside?
+## ✨ What's inside?
 
 ```
 backend/
 ├── app/
+│   ├── main.py              # FastAPI application entry point
+│   ├── core/
+│   │   └── config.py        # Configuration management
+│   ├── models/
+│   │   └── base.py          # Pydantic models for API responses
 │   ├── services/
-│   │   ├── mesh_client.py   # single source of truth for authority comms
-│   │   └── __init__.py      # re-exports mesh_client helpers
-│   └── simple_backend.py    # minimal FastAPI application
-├── requirements.txt         # small set of runtime deps
-└── Dockerfile               # container image (production & dev)
+│   │   └── blockchain_client.py # Etherlink blockchain integration
+│   └── api/v1/
+│       ├── endpoints/
+│       │   ├── authorities.py # Authority network management
+│       │   ├── transactions.py # Transaction processing
+│       │   ├── wallet.py    # Wallet balance and account info
+│       │   └── websocket.py # Real-time updates
+│       └── router.py        # API routing
+├── requirements.txt         # Python dependencies
+└── Dockerfile               # Container image (production & dev)
 ```
-
-*All legacy clients (`authority_client.py`, `mesh_authority_client.py`, etc.) have been removed.*
 
 ---
 
@@ -29,80 +37,110 @@ backend/
 Frontend (React)  ─┐                  │
                    │  REST / JSON    │
                    ▼                  │
-   simple_backend.py (FastAPI)        │
-                   │  async httpx    │
+   FastAPI Backend (main.py)          │
+                   │  Web3 / RPC     │
                    ▼                  │
-       mesh_client.py  ─────────►  Mininet-WiFi Gateway Bridge (NAT node exposing :8080)
+       blockchain_client.py  ───────►  Etherlink Blockchain
                    │                  │
-                   │  TCP MeshPay     │
+                   │  Smart Contract  │
                    ▼                  ▼
-             MeshPay Authority  …  MeshPay Authority
+             MeshPayMVP Contract  …  Token Contracts (USDT/USDC)
 ```
 
-* The **gateway bridge** (running inside the NAT node of the mesh demo) exposes standard HTTP routes ( `/authorities`, `/authorities/<name>/transfer`, … ).
-* `mesh_client.py` is a thin wrapper that forwards JSON requests to the bridge and returns the answer.
-* `simple_backend.py` exposes a handful of REST routes consumed by the React frontend.
+* The **backend** exposes REST API endpoints for wallet operations, transaction processing, and blockchain state queries.
+* `blockchain_client.py` handles all interactions with Etherlink blockchain using Web3.py.
+* Smart contracts manage account registration, token funding, and transfer certificate redemption.
+* Real-time updates are provided via WebSocket connections.
 
 ---
 
 ## 🚀 Quick start (local dev)
 
 ```bash
-# 1.  Ensure Python 3.11+ and Node gateway running (or mock)
+# 1.  Ensure Python 3.9+ and Etherlink RPC access
 
-# 2.  Install deps (virtualenv/venv recommended)
+# 2.  Install dependencies (virtualenv/venv recommended)
 pip install -r requirements.txt
 
-# 3.  Launch backend (auto-reload)
+# 3.  Set environment variables
+export ETHERLINK_RPC_URL="https://testnet-rpc.etherlink.com"
+export MESHPAY_CONTRACT_ADDRESS="0x..."
+export BACKEND_PRIVATE_KEY="0x..."
+
+# 4.  Launch backend (auto-reload)
 uvicorn app.main:app --reload --port 8000
 
-# 4.  Open docs → http://localhost:8000/docs
+# 5.  Open docs → http://localhost:8000/docs
 ```
 
-> **Tip:** You can export `MESH_GATEWAY_URL` before launch to point at a non-default gateway address.
+> **Tip:** You can use the provided `.env.example` file to configure your environment variables.
 
-### using Docker
+### Using Docker
 
 ```bash
 # Build image
 docker build -t meshpay-backend .
 
 # Run (maps port 8000)
-docker run --rm -p 8000:8000 -e MESH_GATEWAY_URL=http://10.0.0.254:8080 meshpay-backend
+docker run --rm -p 8000:8000 \
+  -e ETHERLINK_RPC_URL=https://testnet-rpc.etherlink.com \
+  -e MESHPAY_CONTRACT_ADDRESS=0x... \
+  -e BACKEND_PRIVATE_KEY=0x... \
+  meshpay-backend
 ```
 
 ---
 
-## 🌐 API reference (MVP)
+## 🌐 API reference
+
+### Wallet Management
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Simple liveness probe |
-| GET | `/authorities?refresh=false` | Discover MeshPay authorities |
-| GET | `/authorities/{name}` | Single authority details |
-| POST | `/transfer?authority={name}` | Forward *TransferRequest* JSON to authority |
-| POST | `/confirmation?authority={name}` | Forward *ConfirmationRequest* JSON to authority |
-| POST | `/ping/{name}` | Ping authority through gateway |
-| POST | `/ping-all` | Concurrent ping for all authorities |
+| GET | `/wallet/{address}` | Get account information and balances |
+| GET | `/wallet/{address}/balances` | Get token balances for account |
+| GET | `/wallet/{address}/registration` | Check account registration status |
+
+### Authority Network
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/authorities` | Get all available authorities |
+| GET | `/authorities/{name}` | Get specific authority details |
+| POST | `/authorities/{name}/ping` | Ping authority for health check |
+
+### Real-time Updates
+
+| Method | Path | Description |
+|--------|------|-------------|
+| WebSocket | `/ws/updates` | Real-time transaction and authority updates |
+
+### System Health
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | System health check |
+| GET | `/contract/stats` | Smart contract statistics |
 
 ### Payload examples
 
-**TransferRequest**
+**Account Info Response**
 ```jsonc
 {
-  "sender": "alice",
-  "recipient": "bob",
-  "amount": 50,
-  "token": "USDT",
-  "sequence_number": 123 // optional
-}
-```
-
-**ConfirmationRequest**
-```jsonc
-{
-  "transfer_id": "0xdeadbeef",
-  "signature": "0x…"   // optional – authority may add it
+  "address": "0x...",
+  "balances": {
+    "USDT": {
+      "token_symbol": "USDT",
+      "token_address": "0x...",
+      "wallet_balance": "1000.0",
+      "meshpay_balance": "500.0",
+      "total_balance": "1500.0",
+      "decimals": 18
+    }
+  },
+  "is_registered": true,
+  "registration_time": 1704067200,
+  "last_redeemed_sequence": 0
 }
 ```
 
@@ -110,22 +148,43 @@ docker run --rm -p 8000:8000 -e MESH_GATEWAY_URL=http://10.0.0.254:8080 meshpay-
 
 ## 🛠️ Configuration
 
-All settings are hard-coded for simplicity but can be overridden via **environment variables**:
+All settings can be configured via **environment variables**:
 
-| Var | Default | Purpose |
-|-----|---------|---------|
-| `MESH_GATEWAY_URL` | `http://10.0.0.254:8080` | URL of the HTTP bridge inside the NAT node |
-| `HTTP_TIMEOUT` | `10` | Seconds for httpx requests |
-| `SUPPORTED_TOKENS` | `USDT,USDC` | Comma-separated ERC-20 symbols |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `ETHERLINK_RPC_URL` | `https://testnet-rpc.etherlink.com` | Etherlink RPC endpoint |
+| `CHAIN_ID` | `128123` | Etherlink testnet chain ID |
+| `MESHPAY_CONTRACT_ADDRESS` | `0x...` | Deployed MeshPayMVP contract address |
+| `BACKEND_PRIVATE_KEY` | `0x...` | Backend account private key |
+| `WTZ_CONTRACT_ADDRESS` | `0x...` | Wrapped XTZ token contract |
+| `USDT_CONTRACT_ADDRESS` | `0x...` | USDT token contract |
+| `USDC_CONTRACT_ADDRESS` | `0x...` | USDC token contract |
 
 ---
 
-## 🤖 Development tips
+## 🔧 Smart Contract Integration
 
-1. **Edit & save** – `uvicorn --reload` auto-refreshes.
-2. Use `curl` or the interactive **Swagger UI** (`/docs`) for quick tests.
-3. All logging goes through `structlog`, printed as JSON; pipe to `jq` for pretty output.
-4. The backend is *stateless*: safe to scale horizontally behind a load-balancer.
+The backend integrates with the following smart contracts on Etherlink:
+
+### MeshPayMVP Contract
+- **Account Registration**: Automatic registration during funding
+- **Token Funding**: Transfer tokens from primary blockchain to MeshPay system
+- **Transfer Certificates**: Create and redeem off-chain payment certificates
+- **Authority Management**: Manage authority permissions and activities
+
+### Token Contracts
+- **USDT/USDC**: Standard ERC-20 token contracts
+- **Wrapped XTZ**: Native XTZ wrapped as ERC-20 token
+- **Balance Tracking**: Real-time balance queries and updates
+
+---
+
+## 📊 Monitoring & Health
+
+- **Health Check**: `/health` endpoint for load balancer integration
+- **Contract Stats**: `/contract/stats` for smart contract metrics
+- **Real-time Updates**: WebSocket endpoint for live transaction tracking
+- **Error Handling**: Comprehensive error responses with detailed messages
 
 ---
 

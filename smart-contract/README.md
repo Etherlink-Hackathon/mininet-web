@@ -1,8 +1,6 @@
 # MeshPay Smart Contracts (Hardhat)
 
-A minimal-viable implementation of Facebook/Meta **MeshPay** adapted for the Etherlink (EVM) rollup.
-
-This folder now uses **Hardhat + TypeScript** (no more Foundry) for development, testing and deployment.
+This folder uses **Hardhat + TypeScript** for development, testing and deployment.
 
 ---
 
@@ -25,7 +23,7 @@ $ npx hardhat compile
 # run the full test-suite with gas report
 $ npm test            # alias for: npx hardhat test
 
-# deploy to Etherlink Ghostnet (testnet)
+# deploy to Etherlink Testnet (testnet)
 $ npx hardhat run scripts/deploy.ts --network etherlink_testnet
 # verify (optional)
 $ npx hardhat verify --network etherlink_testnet <DEPLOYED_ADDRESS>
@@ -42,7 +40,7 @@ $ npx hardhat verify --network etherlink_testnet <DEPLOYED_ADDRESS>
 | `npm run test:gas`    | tests with gas reporter                       |
 | `npm run coverage`    | solidity-coverage                             |
 | `npm run deploy:local`| deploy to local Hardhat node                  |
-| `npm run deploy:testnet` | deploy to Etherlink Ghostnet               |
+| `npm run deploy:testnet` | deploy to Etherlink Testnet               |
 
 Scripts live in `scripts/*.ts` and are written in TypeScript.
 
