@@ -11,16 +11,44 @@
 
 MeshPay represents a breakthrough in blockchain payments by solving the fundamental problem of **offline transactions**. Unlike traditional blockchain systems that require constant internet connectivity, MeshPay enables users to send stablecoin payments even when completely offline, using a network of local WiFi authorities for Byzantine fault-tolerant consensus.
 
-### 🚀 Key Innovations
-
-- **🔌 True Offline Operation**: Send USDT/USDC payments without internet
-- **🌐 Local Authority Network**: WiFi-based consensus using nearby authorities
-- **⚡ Sub-second Confirmations**: Real-time transaction processing
-- **🔒 Cryptographic Certificates**: Tamper-proof proof of payment
-- **💰 Nearly-Free Transactions**: Leveraging Etherlink's low gas costs
-- **🔄 Automatic Settlement**: Seamless on-chain settlement when online
-
 ---
+
+## 🔗 Installation
+
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd mininet-web
+
+# 2. Start all services with Docker Compose
+docker compose up -d
+
+# 3. Access the application
+# Web App: http://localhost:3000
+# API Docs: http://localhost:8000/docs
+# WebSocket: ws://localhost:8000/ws
+```
+
+### **Manual Setup (Alternative)**
+
+```bash
+# 1. Start Backend
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# 2. Start Frontend (in new terminal)
+cd frontend
+npm install
+npm run dev
+
+# 3. Deploy Smart Contracts (optional)
+cd smart-contract
+npm install
+npx hardhat compile
+npx hardhat deploy --network etherlink_testnet
+```
+
 
 ## 🎯 The Problem We Solve
 
@@ -137,48 +165,11 @@ User (Offline) → Mesh Network Authorities → Consensus → Certificate → Et
 
 ---
 
----
-
-## 🎯 Use Cases
-
-### **Emergency Response**
-- **Disaster Relief**: Payments during network outages
-- **Medical Emergencies**: Critical payments without internet
-- **Security Operations**: Air-gapped payment systems
-
-### **Remote Operations**
-- **Mining Sites**: Offline payments in remote locations
-- **Research Stations**: Antarctic and space station payments
-- **Military Operations**: Secure offline payment systems
-
-### **Developing Regions**
-- **Rural Communities**: Payments without reliable internet
-- **Mobile Banking**: Offline-first financial services
-- **Microfinance**: Low-cost payment infrastructure
-
-### **High-Security Environments**
-- **Nuclear Facilities**: Air-gapped payment systems
-- **Government Operations**: Secure offline transactions
-- **Financial Institutions**: Backup payment systems
-
----
-
-## 🔗 Quick Links
 
 ### **Technical Documentation**
 - **[Frontend Documentation](frontend/README.md)** - React application setup and development
 - **[Backend Documentation](backend/README.md)** - FastAPI server and blockchain integration
 - **[Smart Contract Documentation](smart-contract/README.md)** - Solidity contracts and deployment
-
-### **Getting Started**
-- **[Installation Guide](docs/INSTALLATION.md)** - Complete setup instructions
-- **[API Reference](docs/API.md)** - REST API and WebSocket documentation
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
-
-### **Development**
-- **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to MeshPay
-- **[Architecture Overview](docs/ARCHITECTURE.md)** - Detailed technical architecture
-- **[Testing Guide](docs/TESTING.md)** - Testing strategies and procedures
 
 ---
 
