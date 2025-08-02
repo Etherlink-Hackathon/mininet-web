@@ -1,259 +1,197 @@
-# Etherlink Offline Payment Web Application
+# MeshPay: Offline Blockchain Payments on Etherlink
 
-## 🚀 Project Overview
+> **Revolutionary offline payment system that enables USDT/USDC transfers without internet connectivity using local authority networks and Etherlink blockchain settlement.**
 
-This is a web application for the **Etherlink Summer Camp** that enables **offline stablecoin payments** (USDT/USDC) without internet connectivity. The application interfaces with a MeshPay authority network running on `mininet-wifi` to verify and process transactions through local TCP communication.
-
-## 🌟 Key Features
-
-- **🗺️ Interactive Map**: Shows nearby shards/authorities that can verify transactions
-- **💰 Wallet Interface**: View balance, transaction history, and manage payments
-- **📱 Offline-First**: Works without internet using local authority networks
-- **🔒 Secure Certificates**: Display transaction certificates for proof of payment
-- **🎯 Real-time Updates**: Live status of authorities and network connectivity
-- **📊 Analytics Dashboard**: Transaction metrics and network performance
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│   Web Frontend      │    │   Backend API       │    │  MeshPay Network    │
-│   (React + Map)     │◄──►│   (FastAPI)         │◄──►│  (mininet-wifi)     │
-│                     │    │                     │    │                     │
-│ • Interactive Map   │    │ • Authority Proxy   │    │ • WiFi Authorities  │
-│ • Payment UI        │    │ • Transaction API   │    │ • Client Nodes      │
-│ • Certificate View  │    │ • WebSocket Updates │    │ • P2P Network       │
-└─────────────────────┘    └─────────────────────┘    └─────────────────────┘
-```
-
-## 📁 Project Structure
-
-```
-mininet-web/
-├── backend/                 # FastAPI backend server
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── main.py         # FastAPI main application
-│   │   ├── api/            # API routes
-│   │   ├── core/           # Core business logic
-│   │   ├── models/         # Pydantic models
-│   │   └── services/       # Service layer
-│   ├── requirements.txt
-│   └── Dockerfile
-├── frontend/               # React frontend application
-│   ├── public/
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── services/       # API services
-│   │   ├── utils/          # Utility functions
-│   │   └── types/          # TypeScript types
-│   ├── package.json
-│   └── Dockerfile
-├── docs/                   # Documentation
-├── docker-compose.yml      # Development environment
-└── README.md
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.9+
-- Node.js 18+
-- Docker & Docker Compose
-- Running mininet-wifi with MeshPay authorities
-
-### 1. Clone and Setup
-
-```bash
-cd mininet-web
-```
-
-### 2. Start Development Environment
-
-```bash
-# Start all services
-docker compose up -d
-
-# Or run individually:
-# Backend
-cd backend && python -m uvicorn app.main:app --reload --port 8000
-
-# Frontend  
-cd frontend && npm start
-```
-
-### 3. Access the Application
-
-- **Web App**: http://localhost:3000
-- **API Docs**: http://localhost:8000/docs
-- **WebSocket**: ws://localhost:8000/ws
-
-## 🎯 Usage Guide
-
-### 1. **View Network Map**
-   - See nearby authorities as interactive markers
-   - Click on authorities to view shard information
-   - Real-time status indicators (online/offline)
-
-### 2. **Check Balance**
-   - View current USDT/USDC balance
-   - Transaction history with certificates
-   - Pending transaction status
-
-### 3. **Make Payment**
-   - Enter recipient address and amount
-   - Select nearby authorities for verification
-   - Receive transaction certificate upon confirmation
-
-### 4. **Manage Certificates**
-   - View transaction certificates
-   - Export/share proof of payments
-   - Verify certificate authenticity
-
-## 🔧 Configuration
-
-### Backend Configuration (`backend/app/core/config.py`)
-
-```python
-# MeshPay Authority Network
-AUTHORITY_DISCOVERY_PORT = 8080
-AUTHORITY_TIMEOUT = 5.0
-MIN_QUORUM_SIZE = 3
-
-# Stablecoin Configuration
-SUPPORTED_TOKENS = ["USDT", "USDC"]
-DEFAULT_TOKEN = "USDT"
-
-# WebSocket Settings
-WS_HEARTBEAT_INTERVAL = 30
-```
-
-### Frontend Configuration (`frontend/src/config.ts`)
-
-```typescript
-export const config = {
-  apiBaseUrl: process.env.REACT_APP_API_URL || 'http://localhost:8000',
-  wsUrl: process.env.REACT_APP_WS_URL || 'ws://localhost:8000/ws',
-  mapCenter: [37.7749, -122.4194], // San Francisco
-  defaultZoom: 12,
-  refreshInterval: 5000,
-};
-```
-
-## 📡 API Endpoints
-
-### Authority Management
-- `GET /api/authorities` - List nearby authorities
-- `GET /api/authorities/{id}` - Get authority details
-- `GET /api/authorities/{id}/shards` - Get authority shards
-
-### Transactions
-- `POST /api/transactions/transfer` - Initiate payment
-- `GET /api/transactions/{id}` - Get transaction status
-- `GET /api/transactions/{id}/certificate` - Get transaction certificate
-
-### Wallet
-- `GET /api/wallet/balance` - Get current balance
-- `GET /api/wallet/history` - Get transaction history
-
-### Real-time Updates
-- `WS /ws` - WebSocket for real-time updates
-
-## 🔒 Security Features
-
-- **Certificate Validation**: All transactions include cryptographic certificates
-- **Offline Verification**: Transactions verified by local authority network
-- **Transport Security**: Secure TCP communication with authorities
-- **Input Validation**: Comprehensive input sanitization and validation
-
-## 🎨 UI Components
-
-### Key React Components
-
-1. **`<NetworkMap />`** - Interactive authority network map
-2. **`<WalletDashboard />`** - Balance and transaction overview
-3. **`<PaymentForm />`** - Payment initiation interface
-4. **`<CertificateViewer />`** - Transaction certificate display
-5. **`<AuthorityCard />`** - Authority information display
-
-## 🧪 Testing
-
-### Backend Tests
-
-```bash
-cd backend
-pytest tests/
-```
-
-### Frontend Tests
-
-```bash
-cd frontend
-npm test
-```
-
-### Integration Tests
-
-```bash
-# Start test environment
-docker compose -f docker-compose.test.yml up
-```
-
-## 📦 Deployment
-
-### Production Build
-
-```bash
-# Build all services
-docker compose -f docker-compose.prod.yml build
-
-# Deploy
-docker compose -f docker-compose.prod.yml up -d
-```
-
-### Environment Variables
-
-```bash
-# Backend
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-SECRET_KEY=your-secret-key
-
-# Frontend
-REACT_APP_API_URL=https://api.yourapp.com
-REACT_APP_WS_URL=wss://api.yourapp.com/ws
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Links
-
-- **Etherlink Documentation**: https://docs.etherlink.com/
-- **MeshPay Repository**: ../meshpay/
-- **Mininet-WiFi**: ../mininet-wifi/
-
-## 🎯 Etherlink Summer Camp Submission
-
-This project demonstrates:
-- ✅ **Offline-first architecture** using MeshPay protocol
-- ✅ **Stablecoin integration** (USDT/USDC)
-- ✅ **Real-time network visualization**
-- ✅ **Cryptographic transaction certificates**
-- ✅ **User-friendly payment interface**
-- ✅ **Integration with existing MeshPay infrastructure**
+[![MeshPay Demo](assets/meshpay-demo.png)](assets/meshpay-demo.mp4)
+*Click to watch live demo video*
 
 ---
 
-**Built with ❤️ for the Etherlink Summer Camp 2025** # mininet-web
+## 🌟 What Makes MeshPay Unique?
+
+MeshPay represents a breakthrough in blockchain payments by solving the fundamental problem of **offline transactions**. Unlike traditional blockchain systems that require constant internet connectivity, MeshPay enables users to send stablecoin payments even when completely offline, using a network of local WiFi authorities for Byzantine fault-tolerant consensus.
+
+### 🚀 Key Innovations
+
+- **🔌 True Offline Operation**: Send USDT/USDC payments without internet
+- **🌐 Local Authority Network**: WiFi-based consensus using nearby authorities
+- **⚡ Sub-second Confirmations**: Real-time transaction processing
+- **🔒 Cryptographic Certificates**: Tamper-proof proof of payment
+- **💰 Nearly-Free Transactions**: Leveraging Etherlink's low gas costs
+- **🔄 Automatic Settlement**: Seamless on-chain settlement when online
+
+---
+
+## 🎯 The Problem We Solve
+
+Traditional blockchain payments have a critical limitation: **they require internet connectivity**. This creates significant barriers in:
+
+- **Remote Areas**: Limited or no internet access
+- **Emergency Situations**: Network outages during disasters
+- **High-Security Environments**: Air-gapped systems
+- **Developing Regions**: Unreliable internet infrastructure
+- **Mobile Payments**: Intermittent connectivity issues
+
+MeshPay eliminates these barriers by enabling **offline-first payments** that work anywhere there's a local WiFi network.
+
+---
+
+## 🏗️ How MeshPay Works
+
+### 1. **Offline Payment Flow**
+```
+User (Offline) → Mesh Network Authorities → Consensus → Certificate → Etherlink Settlement
+```
+
+1. **User initiates payment** while offline
+2. **Local authorities** (within WiFi range) validate the transaction
+3. **Byzantine consensus** ensures transaction integrity
+4. **Cryptographic certificate** provides proof of payment
+5. **Automatic settlement** on Etherlink when internet is available
+
+### 2. **Authority Network Architecture**
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   User Device   │    │  Mesh Network     │    │  Etherlink      │
+│   (Offline)     │◄──►│  Authorities    │◄──►│  Blockchain     │
+│                 │    │                 │    │                 │
+│ • Payment App   │    │ • Consensus     │    │ • Smart         │
+│ • Certificate   │    │ • Validation    │    │   Contracts     │
+│ • Local Cache   │    │ • Signatures    │    │ • Settlement    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 3. **Real-time Network Visualization**
+
+![MeshPay Network Map](assets/network-map.png)
+*Interactive map showing nearby authorities and network topology*
+
+---
+
+## 🎨 User Experience
+
+### **Seamless Offline Payments**
+
+![Payment Flow](assets/payment-flow.png)
+
+1. **Select Recipient**: Choose from contacts or enter address
+2. **Enter Amount**: Specify USDT/USDC amount
+3. **Choose Authorities**: Select nearby WiFi authorities
+4. **Confirm Payment**: Transaction processed offline
+5. **Receive Certificate**: Cryptographic proof of payment
+6. **Automatic Settlement**: On-chain settlement when online
+
+### **Interactive Network Dashboard**
+
+![Dashboard](assets/dashboard.png)
+
+- **Real-time Authority Status**: See which authorities are online
+- **Network Health**: Monitor consensus and connectivity
+- **Transaction History**: View all payments with certificates
+- **Balance Management**: Track USDT/USDC balances
+
+---
+
+## 🔧 Technical Architecture
+
+### **Multi-Layer System**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    React Frontend                          │
+│  • Interactive Network Map                                 │
+│  • Payment Interface                                       │
+│  • Certificate Viewer                                      │
+└─────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────┐
+│                   FastAPI Backend                          │
+│  • Authority Discovery                                      │
+│  • Transaction Processing                                   │
+│  • WebSocket Updates                                        │
+└─────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────┐
+│                Etherlink Blockchain                        │
+│  • MeshPayMVP Smart Contract                               │
+│  • Token Contracts (USDT/USDC)                             │
+│  • Certificate Settlement                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Live Demonstrations
+
+### **Offline Payment Demo**
+[![Offline Payment Demo](assets/offline-demo-thumbnail.png)](assets/offline-demo.mp4)
+*Watch how MeshPay enables payments without internet connectivity*
+
+### **Network Visualization Demo**
+[![Network Demo](assets/network-demo-thumbnail.png)](assets/network-demo.mp4)
+*See the interactive authority network map in action*
+
+### **Certificate Verification Demo**
+[![Certificate Demo](assets/certificate-demo-thumbnail.png)](assets/certificate-demo.mp4)
+*Learn how cryptographic certificates provide payment proof*
+
+---
+
+---
+
+## 🎯 Use Cases
+
+### **Emergency Response**
+- **Disaster Relief**: Payments during network outages
+- **Medical Emergencies**: Critical payments without internet
+- **Security Operations**: Air-gapped payment systems
+
+### **Remote Operations**
+- **Mining Sites**: Offline payments in remote locations
+- **Research Stations**: Antarctic and space station payments
+- **Military Operations**: Secure offline payment systems
+
+### **Developing Regions**
+- **Rural Communities**: Payments without reliable internet
+- **Mobile Banking**: Offline-first financial services
+- **Microfinance**: Low-cost payment infrastructure
+
+### **High-Security Environments**
+- **Nuclear Facilities**: Air-gapped payment systems
+- **Government Operations**: Secure offline transactions
+- **Financial Institutions**: Backup payment systems
+
+---
+
+## 🔗 Quick Links
+
+### **Technical Documentation**
+- **[Frontend Documentation](frontend/README.md)** - React application setup and development
+- **[Backend Documentation](backend/README.md)** - FastAPI server and blockchain integration
+- **[Smart Contract Documentation](smart-contract/README.md)** - Solidity contracts and deployment
+
+### **Getting Started**
+- **[Installation Guide](docs/INSTALLATION.md)** - Complete setup instructions
+- **[API Reference](docs/API.md)** - REST API and WebSocket documentation
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+
+### **Development**
+- **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute to MeshPay
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - Detailed technical architecture
+- **[Testing Guide](docs/TESTING.md)** - Testing strategies and procedures
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions to make MeshPay even better! See our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+## 📄 License
+
+This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Built with ❤️ for the Etherlink Summer Camp 2025**
+
+*MeshPay: Enabling the future of offline blockchain payments*
