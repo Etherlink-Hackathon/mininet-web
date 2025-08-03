@@ -20,6 +20,19 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/privy-proxy': {
+        target: 'https://auth.privy.io',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/privy-proxy/, ''),
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // Add CORS headers for Privy requests
+            proxyReq.setHeader('Origin', 'https://meshpay.zeabur.app');
+            proxyReq.setHeader('Referer', 'https://meshpay.zeabur.app');
+          });
+        },
+      },
     },
   },
   build: {
