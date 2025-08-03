@@ -17,6 +17,8 @@
     "deploy:mainnet": "npx hardhat run scripts/deploy.ts --network etherlink_mainnet",
     "verify:testnet": "npx hardhat verify --network etherlink_testnet",
     "verify:mainnet": "npx hardhat verify --network etherlink_mainnet",
+    "flow:testnet": "npx hardhat run scripts/fastpay_flow.ts --network etherlink_testnet",
+    "flow:mainnet": "npx hardhat run scripts/fastpay_flow.ts --network etherlink_mainnet",
     "size": "npx hardhat size-contracts",
     "clean": "npx hardhat clean",
     "node": "npx hardhat node",

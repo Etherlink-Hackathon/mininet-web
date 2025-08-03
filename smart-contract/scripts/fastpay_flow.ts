@@ -31,7 +31,7 @@ const TRANSFER_AMOUNT = "1"; // Amount to transfer (human-readable)
 const SEQUENCE_NUMBER = 1; // Transfer sequence number
 
 // Execution mode
-const DRY_RUN = false; // Set to false to execute actual transactions
+const DRY_RUN = true; // Set to false to execute actual transactions
 
 // ======================================================
 
@@ -151,24 +151,123 @@ async function main(): Promise<void> {
     }
   }
 
-  /* --------------------------- Create Certificate ------------------------- */
-  // transferAmount is already calculated above
+  // /* --------------------------- Create Certificate ------------------------- */
+  // // transferAmount is already calculated above
 
-    /* ------------------------------ Redeem ---------------------------------- */
-    console.log("Redeeming certificate …");
-    const redeemStruct = {
-      transferCertificate: {
-        sender: sender.address,
-        recipient: recipient.address,
-        token: tokenAddress as string,
-        amount: transferAmount,
-        sequenceNumber: SEQUENCE_NUMBER,
-      },
-      signature: "0x", // MVP: no committee yet
-    };
-    const redeemTx = await fastPay.connect(recipient).handleRedeemTransaction(redeemStruct);
-    await redeemTx.wait();
+  //   /* ------------------------------ Redeem ---------------------------------- */
+  //   console.log("Redeeming certificate …");
+  //   const redeemStruct = {
+  //     transferCertificate: {
+  //       sender: sender.address,
+  //       recipient: recipient.address,
+  //       token: tokenAddress as string,
+  //       amount: transferAmount,
+  //       sequenceNumber: SEQUENCE_NUMBER,
+  //     },
+  //     signature: "0x", // MVP: no committee yet
+  //   };
+  //   const redeemTx = await fastPay.connect(recipient).handleRedeemTransaction(redeemStruct);
+  //   await redeemTx.wait();
   
+
+  /* --------------------------- Test updateBalanceFromConfirmation ------------------------- */
+  console.log("\n🧪 Testing updateBalanceFromConfirmation function...");
+  
+  // Create a test authority (using sender as authority for testing)
+  console.log("Setting up test authority...");
+  if (!DRY_RUN) {
+    try {
+      await fastPay.addAuthority(sender.address, "TestAuthority");
+      console.log("✓ Added test authority");
+    } catch (error) {
+      console.log("ℹ️  Authority already exists or not owner");
+    }
+  }
+
+  // Test 1: Basic confirmation order test
+  console.log("\n📋 Test 1: Basic confirmation order test");
+  const testOrderId = "test-order-" + Date.now();
+  const testConfirmationOrder = {
+    transferOrder: {
+      orderId: testOrderId,
+      sender: sender.address,
+      recipient: recipient.address,
+      amount: 1,
+      token: tokenAddress as string,
+      sequenceNumber: SEQUENCE_NUMBER + 1,
+      timestamp: Math.floor(Date.now() / 1000),
+      signature: "0x"
+    },
+    authoritySignatures: ["0x"]
+  };
+
+  console.log(`Confirmation order: ${JSON.stringify(testConfirmationOrder, null, 2)}`);
+
+  if (DRY_RUN) {
+    console.log("Dry run: Would call updateBalanceFromConfirmation (simulated)");
+  } else {
+    try {
+      const updateTx = await fastPay.connect(sender).updateBalanceFromConfirmation(testConfirmationOrder);
+      await updateTx.wait();
+      console.log("✅ updateBalanceFromConfirmation executed successfully");
+      
+      // Check balances after update
+      const senderBalanceAfter = await fastPay.getAccountBalance(sender.address, tokenAddress as string);
+      const recipientBalanceAfter = await fastPay.getAccountBalance(recipient.address, tokenAddress as string);
+      
+      console.log(`Sender balance after update: ${ethers.formatUnits(senderBalanceAfter, tokenDecimals)}`);
+      console.log(`Recipient balance after update: ${ethers.formatUnits(recipientBalanceAfter, tokenDecimals)}`);
+    } catch (error) {
+      console.error("❌ updateBalanceFromConfirmation failed:", error);
+    }
+  }
+
+  // Test 2: Real-world data format test (using your provided format)
+  console.log("\n📋 Test 2: Real-world data format test");
+  const realWorldOrderId = "ebe9dd91-a566-4efe-b830-1c00230dd447";
+  const realWorldSender = "0x6F8c8eB1d40cd2b9918334e7E82db9Bc9df4E8B8";
+  const realWorldRecipient = "0x75B128c7AE715Ffe273433DbfF63097FDC10804d";
+  const realWorldToken = "0x0000000000000000000000000000000000000000"; // Native XTZ
+  const realWorldAmount = 1; // Convert from 0 to 1 XTZ for testing
+  const realWorldTimestamp = 1754182187;
+  const realWorldSignature = "0x";
+  const realWorldAuthoritySignatures: string[] = [];
+
+  const realWorldConfirmationOrder = {
+    transferOrder: {
+      orderId: realWorldOrderId,
+      sender: realWorldSender,
+      recipient: realWorldRecipient,
+      amount: realWorldAmount,
+      token: realWorldToken,
+      sequenceNumber: 1,
+      timestamp: realWorldTimestamp,
+      signature: realWorldSignature
+    },
+    authoritySignatures: realWorldAuthoritySignatures
+  };
+
+  console.log(`Real-world confirmation order: ${JSON.stringify(realWorldConfirmationOrder, null, 2)}`);
+
+  if (DRY_RUN) {
+    console.log("Dry run: Would call updateBalanceFromConfirmation with real-world data (simulated)");
+  } else {
+    try {
+      // Fund the real-world sender first (if it's a different address)
+      if (realWorldSender !== sender.address) {
+        console.log(`Funding real-world sender ${realWorldSender}...`);
+        // Note: This would require the real-world sender to have funds
+        console.log("⚠️  Note: Real-world sender needs to be funded separately");
+      }
+
+      const realWorldUpdateTx = await fastPay.connect(sender).updateBalanceFromConfirmation(realWorldConfirmationOrder);
+      await realWorldUpdateTx.wait();
+      console.log("✅ Real-world updateBalanceFromConfirmation executed successfully");
+    } catch (error) {
+      console.error("❌ Real-world updateBalanceFromConfirmation failed:", error);
+    }
+  }
+  console.log("\n🧪 updateBalanceFromConfirmation testing completed!");
 
   /* --------------------------- Final Balances ---------------------------- */
   let senderBal: bigint;
