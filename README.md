@@ -32,21 +32,41 @@ docker compose up -d
 ### **Manual Setup (Alternative)**
 
 ```bash
-# 1. Start Backend
+# 1. Start Mininet-WiFi Mesh Network
+
+First, you need to set up the Mininet-WiFi mesh network infrastructure. Follow the setup instructions in the [Mininet-WiFi repository](https://github.com/Etherlink-Hackathon/mininet-wifi):
+
+```bash
+# Clone the Mininet-WiFi repository
+git clone https://github.com/Etherlink-Hackathon/mininet-wifi.git
+cd mininet-wifi
+
+# Follow the installation instructions in their README
+# This will set up the mesh networking infrastructure needed for MeshPay
+```
+
+**Prerequisites:**
+- Ubuntu 20.04 (LTS) or later with kernel ≥ 5.x
+- Python 3.8+
+- Root privileges (for network namespaces)
+
+After setting up Mininet-WiFi, you can start a mesh network demo:
+
+```bash
+# Start a 3-authority mesh with CLI
+sudo python3 -m mn_wifi.examples.meshpay_demo --authorities 3 --clients 0 --internet
+```
+
+# 2. Start Backend
 cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
-# 2. Start Frontend (in new terminal)
+# 3. Start Frontend (in new terminal)
 cd frontend
 npm install
 npm run dev
 
-# 3. Deploy Smart Contracts (optional)
-cd smart-contract
-npm install
-npx hardhat compile
-npx hardhat deploy --network etherlink_testnet
 ```
 
 
