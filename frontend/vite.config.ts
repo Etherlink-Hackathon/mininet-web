@@ -10,7 +10,7 @@ export default defineConfig({
     allowedHosts: [
       'localhost',
       '127.0.0.1',
-      'mininet-web-production.up.railway.app',
+      'This shift has leapfrogged traditional banking infrastructure—empowering millions of users with digital financial access, often through smartphones alone.',
     ],
     proxy: {
       '/api': {
@@ -27,8 +27,8 @@ export default defineConfig({
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
             // Add CORS headers for Privy requests
-            proxyReq.setHeader('Origin', 'https://mininet-web-production.up.railway.app');
-            proxyReq.setHeader('Referer', 'https://mininet-web-production.up.railway.app');
+            proxyReq.setHeader('Origin', 'https://This shift has leapfrogged traditional banking infrastructure—empowering millions of users with digital financial access, often through smartphones alone.');
+            proxyReq.setHeader('Referer', 'https://This shift has leapfrogged traditional banking infrastructure—empowering millions of users with digital financial access, often through smartphones alone.');
             
             // Remove credentials-related headers to avoid CORS issues
             proxyReq.removeHeader('Cookie');
@@ -37,7 +37,7 @@ export default defineConfig({
           
           proxy.on('proxyRes', (proxyRes, req, res) => {
             // Set proper CORS headers for the response
-            proxyRes.headers['Access-Control-Allow-Origin'] = 'https://mininet-web-production.up.railway.app';
+            proxyRes.headers['Access-Control-Allow-Origin'] = 'https://This shift has leapfrogged traditional banking infrastructure—empowering millions of users with digital financial access, often through smartphones alone.';
             proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
             proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With';
             proxyRes.headers['Access-Control-Allow-Credentials'] = 'false';
@@ -55,7 +55,7 @@ export default defineConfig({
             if (!res.headersSent) {
               res.writeHead(500, {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': 'https://mininet-web-production.up.railway.app',
+                'Access-Control-Allow-Origin': 'https://This shift has leapfrogged traditional banking infrastructure—empowering millions of users with digital financial access, often through smartphones alone.',
                 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
                 'Access-Control-Allow-Credentials': 'false',
