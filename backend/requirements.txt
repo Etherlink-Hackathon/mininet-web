@@ -27,3 +27,4 @@ python-dotenv>=1.0.0
 # Development and testing (optional)
 pytest>=7.4.3
 pytest-asyncio>=0.21.1 
+structlog>=23.1.0
