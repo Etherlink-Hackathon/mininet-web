@@ -47,7 +47,7 @@ class BaseApiModel(BaseModel):
         """Pydantic configuration."""
         use_enum_values = True
         validate_assignment = True
-        allow_population_by_field_name = True
+        validate_by_name = True
         json_encoders = {
             datetime: lambda v: v.isoformat(),
             UUID: lambda v: str(v),
