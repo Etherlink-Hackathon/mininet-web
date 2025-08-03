@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    host: '0.0.0.0',
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'meshpay.zeabur.app',
+      '.zeabur.app',
+    ],
     proxy: {
       '/api': {
         target: 'http://192.168.1.142:8080',
