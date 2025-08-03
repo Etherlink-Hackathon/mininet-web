@@ -10,8 +10,7 @@ export default defineConfig({
     allowedHosts: [
       'localhost',
       '127.0.0.1',
-      'meshpay.zeabur.app',
-      '.zeabur.app',
+      'mininet-web-production.up.railway.app',
     ],
     proxy: {
       '/api': {
@@ -28,8 +27,8 @@ export default defineConfig({
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
             // Add CORS headers for Privy requests
-            proxyReq.setHeader('Origin', 'https://meshpay.zeabur.app');
-            proxyReq.setHeader('Referer', 'https://meshpay.zeabur.app');
+            proxyReq.setHeader('Origin', 'https://mininet-web-production.up.railway.app');
+            proxyReq.setHeader('Referer', 'https://mininet-web-production.up.railway.app');
           });
         },
       },
