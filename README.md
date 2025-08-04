@@ -120,7 +120,8 @@ User (Offline) → Mesh Network Authorities → Consensus → Certificate → Et
 
 ### **Seamless Offline Payments**
 
-![Payment Flow](assets/payment-flow.png)
+![Payment Flow](assets/send-payment.png)
+![Payment Flow](assets/confirm-payment.png)
 
 1. **Select Recipient**: Choose from contacts or enter address
 2. **Enter Amount**: Specify USDT/USDC amount
@@ -166,22 +167,6 @@ User (Offline) → Mesh Network Authorities → Consensus → Certificate → Et
 │  • Certificate Settlement                                  │
 └─────────────────────────────────────────────────────────────┘
 ```
-
----
-
-## 🚀 Live Demonstrations
-
-### **Offline Payment Demo**
-[![Offline Payment Demo](assets/offline-demo-thumbnail.png)](assets/offline-demo.mp4)
-*Watch how MeshPay enables payments without internet connectivity*
-
-### **Network Visualization Demo**
-[![Network Demo](assets/network-demo-thumbnail.png)](assets/network-demo.mp4)
-*See the interactive authority network map in action*
-
-### **Certificate Verification Demo**
-[![Certificate Demo](assets/certificate-demo-thumbnail.png)](assets/certificate-demo.mp4)
-*Learn how cryptographic certificates provide payment proof*
 
 ---
 
