@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     api_prefix: str = os.getenv("API_PREFIX", "/api")
     
     # CORS Configuration
-    allowed_origins: List[str] = os.getenv("ALLOWED_ORIGINS", ["http://localhost:3000", "http://localhost:5173", "https://meshpay.up.railway.app/"])
+    allowed_origins: List[str] = os.getenv("ALLOWED_ORIGINS", ["*"])
     allowed_methods: List[str] = os.getenv("ALLOWED_METHODS", ["GET", "POST", "PUT", "DELETE", "OPTIONS"])
     allowed_headers: List[str] = os.getenv("ALLOWED_HEADERS", ["*"])
     

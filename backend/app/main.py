@@ -42,24 +42,6 @@ app.add_middleware(
 # Include the main API router with /api prefix
 app.include_router(api_router, prefix="/api")
 # ---------------------------------------------------------------------------
-# Application lifecycle events
-# ---------------------------------------------------------------------------
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Initialize services on application startup."""
-    # Start mesh client
-    await mesh_client.start()
-    
-    # Initialize blockchain client (already initialized in constructor)
-    # No async initialization needed for blockchain client
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    """Cleanup services on application shutdown."""
-    await mesh_client.close()
-
-# ---------------------------------------------------------------------------
 # Root endpoints (non-API)
 # ---------------------------------------------------------------------------
 
@@ -89,13 +71,7 @@ async def root() -> Dict[str, Any]:
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
     """System health check endpoint."""
-    # Check mesh client status
-    mesh_status = "ok"
-    try:
-        await mesh_client.discover()
-    except Exception:
-        mesh_status = "error"
-    
+
     # Check blockchain client status
     blockchain_health = await blockchain_client.health_check()
     
