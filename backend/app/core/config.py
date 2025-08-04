@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # API Configuration
     api_host: str = os.getenv("API_HOST", "0.0.0.0")
     api_port: int = os.getenv("API_PORT", 8000)
-    api_prefix: str = os.getenv("API_PREFIX", "/api/v1")
+    api_prefix: str = os.getenv("API_PREFIX", "/api")
     
     # CORS Configuration
     allowed_origins: List[str] = os.getenv("ALLOWED_ORIGINS", ["http://localhost:3000", "http://localhost:5173", "https://meshpay.up.railway.app/"])
