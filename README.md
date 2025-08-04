@@ -45,17 +45,12 @@ cd mininet-wifi
 # This will set up the mesh networking infrastructure needed for MeshPay
 ```
 
-**Prerequisites:**
-- Ubuntu 20.04 (LTS) or later with kernel ≥ 5.x
-- Python 3.8+
-- Root privileges (for network namespaces)
-
 After setting up Mininet-WiFi, you can start a mesh network demo:
 
 ```bash
 # Start a 3-authority mesh with CLI
 sudo python3 -m mn_wifi.examples.meshpay_demo --authorities 3 --clients 0 --internet
-```
+
 
 # 2. Start Backend
 cd backend
