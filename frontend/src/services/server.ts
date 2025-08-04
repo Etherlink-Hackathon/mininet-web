@@ -50,7 +50,7 @@ export interface HealthCheck {
 // Create axios instance for wallet API calls
 const serverClient = axios.create({
   baseURL: import.meta.env.VITE_SERVER_BASE_URL,
-  timeout: 30_000,
+  timeout: 3_000,
   headers: { 'Content-Type': 'application/json' },
 });
 
